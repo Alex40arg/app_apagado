@@ -1,25 +1,13 @@
-# Version: v0.2
+# Version: v0.1
 
-"""Interfaz y temporizador funcional de PC Night Timer."""
+"""Interfaz estática inicial de PC Night Timer."""
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 
 
 WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 600
-TIMER_INTERVAL_MS = 1000
-
-QUICK_TIMES_MINUTES = {
-    "15 min": 15,
-    "30 min": 30,
-    "45 min": 45,
-    "60 min": 60,
-    "75 min": 75,
-    "90 min": 90,
-    "105 min": 105,
-    "120 min": 120,
-}
 
 COLORS = {
     "background": "#0d0f12",
@@ -37,7 +25,7 @@ COLORS = {
 
 
 class PCNightTimerApp:
-    """Controla las vistas y la cuenta regresiva de PC Night Timer."""
+    """Construye las vistas estáticas previstas para el Paso 1."""
 
     def __init__(self, root):
         self.root = root
@@ -46,11 +34,6 @@ class PCNightTimerApp:
         self.hours = tk.StringVar(value="0")
         self.minutes = tk.StringVar(value="2")
         self.warning_preview = False
-        self.remaining_seconds = 0
-        self.timer_running = False
-        self.timer_paused = False
-        self.timer_finished = False
-        self.timer_after_id = None
 
         self._configure_window()
         self._configure_styles()
@@ -270,7 +253,7 @@ class PCNightTimerApp:
         self.start_button = self._button(
             panel,
             "INICIAR TIMER",
-            self.start_timer,
+            self.show_active_timer,
             kind="primary",
             width=25,
         )
@@ -322,52 +305,6 @@ class PCNightTimerApp:
             self.start_button.configure(text="INICIAR TIMER")
             self.test_notice.configure(text="")
 
-    @staticmethod
-    def format_time(total_seconds):
-        total_seconds = max(0, total_seconds)
-        hours, remainder = divmod(total_seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-
-    def _selected_time_seconds(self):
-        selection = self.quick_time.get()
-        if selection in QUICK_TIMES_MINUTES:
-            return QUICK_TIMES_MINUTES[selection] * 60
-
-        if selection != "Personalizado":
-            raise ValueError("Seleccioná un tiempo válido.")
-
-        hours_text = self.hours.get().strip()
-        minutes_text = self.minutes.get().strip()
-        if not hours_text.isdigit() or not minutes_text.isdigit():
-            raise ValueError("Ingresá horas y minutos usando solamente números enteros.")
-
-        hours = int(hours_text)
-        minutes = int(minutes_text)
-        if minutes > 59:
-            raise ValueError("Los minutos personalizados deben estar entre 0 y 59.")
-
-        total_seconds = (hours * 60 + minutes) * 60
-        if total_seconds == 0:
-            raise ValueError("El tiempo personalizado debe ser mayor que cero.")
-        return total_seconds
-
-    def start_timer(self):
-        try:
-            selected_seconds = self._selected_time_seconds()
-        except ValueError as error:
-            messagebox.showerror("Tiempo no válido", str(error), parent=self.root)
-            return
-
-        self._cancel_scheduled_tick()
-        self.remaining_seconds = selected_seconds
-        self.timer_running = True
-        self.timer_paused = False
-        self.timer_finished = False
-        self.warning_preview = False
-        self.show_active_timer()
-        self._schedule_tick()
-
     def show_active_timer(self):
         self._clear_content()
 
@@ -395,27 +332,23 @@ class PCNightTimerApp:
         else:
             description = "La PC se apagará en"
 
-        self.timer_description = tk.Label(
+        tk.Label(
             panel,
             text=description,
             bg=COLORS["panel"],
             fg=COLORS["text"],
             font=("Segoe UI Semibold", 18),
             takefocus=False,
-        )
-        self.timer_description.pack(
-            pady=((22 if self.warning_preview else 35), 4)
-        )
+        ).pack(pady=((22 if self.warning_preview else 35), 4))
 
-        self.timer_label = tk.Label(
+        tk.Label(
             panel,
-            text=self.format_time(self.remaining_seconds),
+            text="00:00:45" if self.warning_preview else "01:00:00",
             bg=COLORS["panel"],
             fg=COLORS["warning"] if self.warning_preview else COLORS["text"],
             font=("Consolas", 68, "bold"),
             takefocus=False,
-        )
-        self.timer_label.pack(pady=(0, 5))
+        ).pack(pady=(0, 5))
 
         if self.warning_preview:
             tk.Label(
@@ -427,44 +360,40 @@ class PCNightTimerApp:
                 takefocus=False,
             ).pack(pady=(0, 12))
         else:
-            mode_text = self._active_status_text()
-            self.timer_status = tk.Label(
+            mode_text = (
+                "MODO DE PRUEBA — La PC no se apagará"
+                if self.test_mode.get()
+                else "Timer activo"
+            )
+            tk.Label(
                 panel,
                 text=mode_text,
                 bg=COLORS["panel"],
                 fg=COLORS["warning"] if self.test_mode.get() else COLORS["muted"],
                 font=("Segoe UI Semibold", 11),
                 takefocus=False,
-            )
-            self.timer_status.pack(pady=(0, 16))
-
-        if self.warning_preview:
-            self.timer_status = None
+            ).pack(pady=(0, 16))
 
         primary_controls = tk.Frame(panel, bg=COLORS["panel"])
         primary_controls.pack(pady=(0, 13))
-        pause_text = "Continuar" if self.timer_paused else "Pausa"
-        self.pause_button = self._button(
-            primary_controls, pause_text, self.toggle_pause
+        self._button(primary_controls, "Pausa", self._simulate_pause).pack(
+            side="left", padx=7
         )
-        self.pause_button.pack(side="left", padx=7)
         self._button(
             primary_controls,
             "CANCELAR" if self.warning_preview else "Cancelar",
-            self.cancel_timer,
+            self.show_configuration,
             kind="danger",
         ).pack(side="left", padx=7)
 
         add_controls = tk.Frame(panel, bg=COLORS["panel"])
         add_controls.pack(pady=(0, 12))
-        self.add_15_button = self._button(
-            add_controls, "+15 min", lambda: self.add_minutes(15), width=12
+        self._button(add_controls, "+15 min", self._static_action, width=12).pack(
+            side="left", padx=7
         )
-        self.add_15_button.pack(side="left", padx=7)
-        self.add_30_button = self._button(
-            add_controls, "+30 min", lambda: self.add_minutes(30), width=12
+        self._button(add_controls, "+30 min", self._static_action, width=12).pack(
+            side="left", padx=7
         )
-        self.add_30_button.pack(side="left", padx=7)
 
         preview_text = "VOLVER A VISTA NORMAL" if self.warning_preview else "VER ADVERTENCIA FINAL"
         preview_button = tk.Button(
@@ -483,90 +412,15 @@ class PCNightTimerApp:
         )
         preview_button.pack()
 
-        if self.timer_finished:
-            self._show_finished_state()
-
-    def _active_status_text(self):
-        if self.timer_finished:
-            return "Tiempo finalizado"
-        if self.timer_paused:
-            return "Timer pausado"
-        if self.test_mode.get():
-            return "MODO DE PRUEBA — La PC no se apagará"
-        return "Timer activo"
-
-    def _schedule_tick(self):
-        if self.timer_running and not self.timer_paused and self.timer_after_id is None:
-            self.timer_after_id = self.root.after(TIMER_INTERVAL_MS, self._tick)
-
-    def _cancel_scheduled_tick(self):
-        if self.timer_after_id is not None:
-            self.root.after_cancel(self.timer_after_id)
-            self.timer_after_id = None
-
-    def _tick(self):
-        self.timer_after_id = None
-        if not self.timer_running or self.timer_paused:
-            return
-
-        self.remaining_seconds = max(0, self.remaining_seconds - 1)
-        self.timer_label.configure(text=self.format_time(self.remaining_seconds))
-        if self.remaining_seconds == 0:
-            self._finish_timer()
-        else:
-            self._schedule_tick()
-
-    def toggle_pause(self):
-        if not self.timer_running:
-            return
-
-        if self.timer_paused:
-            self.timer_paused = False
-            self.pause_button.configure(text="Pausa")
-            if self.timer_status is not None:
-                self.timer_status.configure(text=self._active_status_text())
-            self._schedule_tick()
-        else:
-            self._cancel_scheduled_tick()
-            self.timer_paused = True
-            self.pause_button.configure(text="Continuar")
-            if self.timer_status is not None:
-                self.timer_status.configure(text="Timer pausado")
-
-    def cancel_timer(self):
-        self._cancel_scheduled_tick()
-        self.timer_running = False
-        self.timer_paused = False
-        self.timer_finished = False
-        self.warning_preview = False
-        self.show_configuration()
-
-    def add_minutes(self, minutes):
-        if not self.timer_running:
-            return
-        self.remaining_seconds += minutes * 60
-        self.timer_label.configure(text=self.format_time(self.remaining_seconds))
-
-    def _finish_timer(self):
-        self._cancel_scheduled_tick()
-        self.remaining_seconds = 0
-        self.timer_running = False
-        self.timer_paused = False
-        self.timer_finished = True
-        self.timer_label.configure(text="00:00:00")
-        self._show_finished_state()
-
-    def _show_finished_state(self):
-        self.timer_description.configure(text="El timer llegó a cero.")
-        if self.timer_status is not None:
-            self.timer_status.configure(text="Tiempo finalizado")
-        self.pause_button.configure(text="Pausa", state="disabled")
-        self.add_15_button.configure(state="disabled")
-        self.add_30_button.configure(state="disabled")
-
     def _toggle_warning_preview(self):
         self.warning_preview = not self.warning_preview
         self.show_active_timer()
+
+    def _simulate_pause(self):
+        """Paso 1: control visual sin modificar el tiempo mostrado."""
+
+    def _static_action(self):
+        """Paso 1: los botones de suma quedan visibles pero aún no actúan."""
 
 
 def main():
