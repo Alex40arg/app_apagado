@@ -1,4 +1,4 @@
-# Version: v0.3
+# Version: v0.2
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
@@ -45,7 +45,7 @@ class PCNightTimerApp:
         self.quick_time = tk.StringVar(value="60 min")
         self.hours = tk.StringVar(value="0")
         self.minutes = tk.StringVar(value="2")
-        self.warning_active = False
+        self.warning_preview = False
         self.remaining_seconds = 0
         self.timer_running = False
         self.timer_paused = False
@@ -67,7 +67,6 @@ class PCNightTimerApp:
         x = max(0, (screen_width - WINDOW_WIDTH) // 2)
         y = max(0, (screen_height - WINDOW_HEIGHT) // 2)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
-        self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
 
     def _configure_styles(self):
         style = ttk.Style(self.root)
@@ -164,7 +163,7 @@ class PCNightTimerApp:
         )
 
     def show_configuration(self):
-        self.warning_active = False
+        self.warning_preview = False
         self._clear_content()
 
         panel = tk.Frame(
@@ -365,10 +364,8 @@ class PCNightTimerApp:
         self.timer_running = True
         self.timer_paused = False
         self.timer_finished = False
-        self.warning_active = selected_seconds <= 60
+        self.warning_preview = False
         self.show_active_timer()
-        if self.warning_active:
-            self._restore_and_foreground()
         self._schedule_tick()
 
     def show_active_timer(self):
@@ -379,12 +376,12 @@ class PCNightTimerApp:
             bg=COLORS["panel"],
             highlightthickness=2,
             highlightbackground=(
-                COLORS["warning"] if self.warning_active else "#292e35"
+                COLORS["warning"] if self.warning_preview else "#292e35"
             ),
         )
         panel.pack(fill="both", expand=True)
 
-        if self.warning_active:
+        if self.warning_preview:
             tk.Label(
                 panel,
                 text="APAGADO INMINENTE",
@@ -407,20 +404,20 @@ class PCNightTimerApp:
             takefocus=False,
         )
         self.timer_description.pack(
-            pady=((22 if self.warning_active else 35), 4)
+            pady=((22 if self.warning_preview else 35), 4)
         )
 
         self.timer_label = tk.Label(
             panel,
             text=self.format_time(self.remaining_seconds),
             bg=COLORS["panel"],
-            fg=COLORS["warning"] if self.warning_active else COLORS["text"],
+            fg=COLORS["warning"] if self.warning_preview else COLORS["text"],
             font=("Consolas", 68, "bold"),
             takefocus=False,
         )
         self.timer_label.pack(pady=(0, 5))
 
-        if self.warning_active:
+        if self.warning_preview:
             tk.Label(
                 panel,
                 text="Guardá cualquier trabajo pendiente o cancelá el apagado.",
@@ -441,7 +438,7 @@ class PCNightTimerApp:
             )
             self.timer_status.pack(pady=(0, 16))
 
-        if self.warning_active:
+        if self.warning_preview:
             self.timer_status = None
 
         primary_controls = tk.Frame(panel, bg=COLORS["panel"])
@@ -453,7 +450,7 @@ class PCNightTimerApp:
         self.pause_button.pack(side="left", padx=7)
         self._button(
             primary_controls,
-            "CANCELAR" if self.warning_active else "Cancelar",
+            "CANCELAR" if self.warning_preview else "Cancelar",
             self.cancel_timer,
             kind="danger",
         ).pack(side="left", padx=7)
@@ -468,6 +465,23 @@ class PCNightTimerApp:
             add_controls, "+30 min", lambda: self.add_minutes(30), width=12
         )
         self.add_30_button.pack(side="left", padx=7)
+
+        preview_text = "VOLVER A VISTA NORMAL" if self.warning_preview else "VER ADVERTENCIA FINAL"
+        preview_button = tk.Button(
+            panel,
+            text=preview_text,
+            command=self._toggle_warning_preview,
+            bg=COLORS["panel"],
+            activebackground=COLORS["panel"],
+            fg=COLORS["muted"],
+            activeforeground=COLORS["text"],
+            relief="flat",
+            bd=0,
+            font=("Segoe UI", 9, "underline"),
+            cursor="hand2",
+            takefocus=True,
+        )
+        preview_button.pack()
 
         if self.timer_finished:
             self._show_finished_state()
@@ -496,10 +510,7 @@ class PCNightTimerApp:
             return
 
         self.remaining_seconds = max(0, self.remaining_seconds - 1)
-        if self.remaining_seconds <= 60 and not self.warning_active:
-            self._enter_final_warning()
-        else:
-            self.timer_label.configure(text=self.format_time(self.remaining_seconds))
+        self.timer_label.configure(text=self.format_time(self.remaining_seconds))
         if self.remaining_seconds == 0:
             self._finish_timer()
         else:
@@ -527,18 +538,14 @@ class PCNightTimerApp:
         self.timer_running = False
         self.timer_paused = False
         self.timer_finished = False
-        self.warning_active = False
+        self.warning_preview = False
         self.show_configuration()
 
     def add_minutes(self, minutes):
         if not self.timer_running:
             return
         self.remaining_seconds += minutes * 60
-        if self.warning_active and self.remaining_seconds > 60:
-            self.warning_active = False
-            self.show_active_timer()
-        else:
-            self.timer_label.configure(text=self.format_time(self.remaining_seconds))
+        self.timer_label.configure(text=self.format_time(self.remaining_seconds))
 
     def _finish_timer(self):
         self._cancel_scheduled_tick()
@@ -557,50 +564,9 @@ class PCNightTimerApp:
         self.add_15_button.configure(state="disabled")
         self.add_30_button.configure(state="disabled")
 
-    def _enter_final_warning(self):
-        if self.warning_active or not self.timer_running:
-            return
-        self.warning_active = True
+    def _toggle_warning_preview(self):
+        self.warning_preview = not self.warning_preview
         self.show_active_timer()
-        self._restore_and_foreground()
-
-    def _restore_and_foreground(self):
-        window_state = self.root.state()
-        if window_state in ("iconic", "withdrawn"):
-            self.root.deiconify()
-        elif window_state == "zoomed":
-            self.root.state("normal")
-
-        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
-        self.root.lift()
-        self.root.attributes("-topmost", True)
-        self.root.after_idle(self._release_topmost)
-        self.root.focus_force()
-
-    def _release_topmost(self):
-        try:
-            self.root.attributes("-topmost", False)
-        except tk.TclError:
-            pass
-
-    def _on_close_request(self):
-        if not self.timer_running:
-            self.root.destroy()
-            return
-
-        should_close = messagebox.askyesno(
-            "Cerrar PC Night Timer",
-            "Hay un temporizador activo.\n\n"
-            "Si cerrás PC Night Timer, el apagado programado se cancelará.\n\n"
-            "¿Querés cerrar la aplicación?",
-            icon="warning",
-            parent=self.root,
-        )
-        if should_close:
-            self._cancel_scheduled_tick()
-            self.timer_running = False
-            self.timer_paused = False
-            self.root.destroy()
 
 
 def main():

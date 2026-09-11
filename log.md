@@ -50,3 +50,30 @@
 - No existe apagado real todavía.
 - La advertencia final automática queda pendiente para el Paso 3.
 - `settings.ini` queda pendiente para el Paso 4.
+
+## Ver 03 — 2026-09-11
+
+### Cambios
+- Se actualizó el código activo a la versión v0.3.
+- La advertencia final aparece automáticamente al llegar a 60 segundos y se construye una sola vez por entrada al estado.
+- Al entrar en advertencia, la ventana se restaura desde minimizada a su tamaño normal e intenta pasar temporalmente al frente sin quedar siempre visible.
+- Los controles Pausa, Continuar, Cancelar, `+15 min` y `+30 min` permanecen disponibles durante la advertencia.
+- Al sumar tiempo por encima de 60 segundos, la interfaz vuelve al estado normal sin reiniciar la cuenta regresiva ni duplicar callbacks.
+- Se agregó confirmación al cerrar la ventana con un timer activo, incluso pausado o en advertencia.
+- Se eliminó el control manual `VER ADVERTENCIA FINAL`.
+- Se preservó la versión v0.2 en `old_versions/Ver02/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Implementar exclusivamente el PASO 3 definido en `DEVELOPMENT_SPEC.md`.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver02/pc_night_timer.py`
+
+### Estado
+- Implementación terminada y comprobada mediante validación de sintaxis y harness temporal de lógica; la interacción visual real queda pendiente de prueba manual por la limitación de Tcl/Tk del entorno de desarrollo.
+- Se comprobó que no existen comandos de apagado ni acciones sobre el sistema.
+- Todavía no existe apagado real.
+- `settings.ini` queda pendiente para el Paso 4.
+- El flujo completo del Modo de prueba queda pendiente para el Paso 5.
