@@ -77,3 +77,31 @@
 - Todavía no existe apagado real.
 - `settings.ini` queda pendiente para el Paso 4.
 - El flujo completo del Modo de prueba queda pendiente para el Paso 5.
+
+## Ver 04 — 2026-09-11
+
+### Cambios
+- Se actualizó el código activo a la versión v0.4.
+- Se agregó la creación, lectura y escritura robusta de `settings.ini` mediante `configparser` de la biblioteca estándar.
+- Se implementó la persistencia de la última selección rápida válida y, para `Personalizado`, de las horas y los minutos.
+- Se implementó la persistencia del estado del Modo de prueba y su restauración visual al iniciar.
+- Se implementó el guardado de la posición normal de la ventana y su restauración cuando permanece razonablemente visible.
+- Se agregaron validaciones y valores predeterminados seguros para secciones ausentes, opciones desconocidas, números inválidos, booleanos inválidos y coordenadas fuera de pantalla.
+- Se preservó la versión v0.3 en `old_versions/Ver03/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Implementar exclusivamente el PASO 4 definido en `DEVELOPMENT_SPEC.md`.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `settings.ini`
+- `log.md`
+- `old_versions/Ver03/pc_night_timer.py`
+
+### Estado
+- Implementación terminada y comprobada mediante validación de sintaxis y un harness temporal para creación automática, reapertura, tiempos rápidos y personalizados, Modo de prueba, coordenadas válidas e inválidas, secciones faltantes, INI malformado y valores inválidos.
+- El harness también comprobó regresiones de selección de tiempo, pausa, continuación, suma de tiempo, advertencia final, llegada a cero, cancelación y confirmación de cierre.
+- El timer activo, su tiempo restante, la pausa y la advertencia no se persisten; cada inicio comienza sin timer activo.
+- La ejecución visual no pudo completarse porque el runtime de desarrollo no encuentra un `init.tcl` utilizable. La GUI y la restauración en distintas configuraciones de monitores quedan pendientes de prueba manual con Tkinter operativo.
+- El flujo completo del Modo de prueba queda pendiente para el Paso 5.
+- Todavía no existe apagado real ni acciones sobre el sistema.

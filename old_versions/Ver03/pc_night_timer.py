@@ -1,9 +1,7 @@
-# Version: v0.4
+# Version: v0.3
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
-import configparser
-from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -11,8 +9,6 @@ from tkinter import messagebox, ttk
 WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 600
 TIMER_INTERVAL_MS = 1000
-SETTINGS_PATH = Path(__file__).resolve().with_name("settings.ini")
-MIN_VISIBLE_WINDOW_PIXELS = 80
 
 QUICK_TIMES_MINUTES = {
     "15 min": 15,
@@ -23,17 +19,6 @@ QUICK_TIMES_MINUTES = {
     "90 min": 90,
     "105 min": 105,
     "120 min": 120,
-}
-
-DEFAULT_SETTINGS = {
-    "General": {
-        "last_time_minutes": "60",
-        "last_time_option": "60 min",
-        "custom_hours": "0",
-        "custom_minutes": "2",
-    },
-    "Window": {"x": "", "y": ""},
-    "Testing": {"test_mode": "false"},
 }
 
 COLORS = {
@@ -51,129 +36,15 @@ COLORS = {
 }
 
 
-def _write_settings(config, path=SETTINGS_PATH):
-    try:
-        with path.open("w", encoding="utf-8") as settings_file:
-            config.write(settings_file)
-    except OSError:
-        return False
-    return True
-
-
-def _valid_nonnegative_integer(value):
-    value = value.strip()
-    if not value.isdigit():
-        raise ValueError
-    return int(value)
-
-
-def load_settings(path=SETTINGS_PATH):
-    """Carga preferencias seguras y conserva claves ajenas de un INI válido."""
-    config = configparser.ConfigParser()
-    file_exists = path.exists()
-
-    if file_exists:
-        try:
-            with path.open("r", encoding="utf-8") as settings_file:
-                config.read_file(settings_file)
-        except (OSError, UnicodeError, configparser.Error):
-            config = configparser.ConfigParser()
-
-    stored_time_option = (
-        config.get("General", "last_time_option", fallback=None)
-        if config.has_section("General")
-        else None
-    )
-    for section, values in DEFAULT_SETTINGS.items():
-        if not config.has_section(section):
-            config.add_section(section)
-        for key, default_value in values.items():
-            if not config.has_option(section, key):
-                config.set(section, key, default_value)
-
-    option = stored_time_option.strip() if stored_time_option is not None else ""
-    valid_options = set(QUICK_TIMES_MINUTES) | {"Personalizado"}
-    if option not in valid_options:
-        try:
-            saved_minutes = int(
-                config.get("General", "last_time_minutes", fallback="60").strip()
-            )
-        except ValueError:
-            saved_minutes = 60
-        option = next(
-            (
-                label
-                for label, minutes in QUICK_TIMES_MINUTES.items()
-                if minutes == saved_minutes
-            ),
-            "60 min",
-        )
-
-    try:
-        custom_hours = _valid_nonnegative_integer(
-            config.get("General", "custom_hours", fallback="0")
-        )
-        custom_minutes = _valid_nonnegative_integer(
-            config.get("General", "custom_minutes", fallback="2")
-        )
-        if custom_minutes > 59 or custom_hours * 60 + custom_minutes == 0:
-            raise ValueError
-    except ValueError:
-        custom_hours = 0
-        custom_minutes = 2
-        if option == "Personalizado":
-            option = "60 min"
-
-    try:
-        test_mode = config.getboolean("Testing", "test_mode")
-    except ValueError:
-        test_mode = False
-
-    try:
-        window_x = int(config.get("Window", "x").strip())
-        window_y = int(config.get("Window", "y").strip())
-    except ValueError:
-        window_x = None
-        window_y = None
-
-    last_time_minutes = (
-        custom_hours * 60 + custom_minutes
-        if option == "Personalizado"
-        else QUICK_TIMES_MINUTES[option]
-    )
-    config.set("General", "last_time_minutes", str(last_time_minutes))
-    config.set("General", "last_time_option", option)
-    config.set("General", "custom_hours", str(custom_hours))
-    config.set("General", "custom_minutes", str(custom_minutes))
-    config.set("Testing", "test_mode", "true" if test_mode else "false")
-    config.set("Window", "x", "" if window_x is None else str(window_x))
-    config.set("Window", "y", "" if window_y is None else str(window_y))
-
-    if not file_exists:
-        _write_settings(config, path)
-
-    return config, {
-        "time_option": option,
-        "custom_hours": custom_hours,
-        "custom_minutes": custom_minutes,
-        "test_mode": test_mode,
-        "window_x": window_x,
-        "window_y": window_y,
-    }
-
-
 class PCNightTimerApp:
     """Controla las vistas y la cuenta regresiva de PC Night Timer."""
 
     def __init__(self, root):
         self.root = root
-        self.settings, saved_settings = load_settings()
-        self.test_mode = tk.BooleanVar(value=saved_settings["test_mode"])
-        self.quick_time = tk.StringVar(value=saved_settings["time_option"])
-        self.hours = tk.StringVar(value=str(saved_settings["custom_hours"]))
-        self.minutes = tk.StringVar(value=str(saved_settings["custom_minutes"]))
-        self.saved_window_x = saved_settings["window_x"]
-        self.saved_window_y = saved_settings["window_y"]
+        self.test_mode = tk.BooleanVar(value=False)
+        self.quick_time = tk.StringVar(value="60 min")
+        self.hours = tk.StringVar(value="0")
+        self.minutes = tk.StringVar(value="2")
         self.warning_active = False
         self.remaining_seconds = 0
         self.timer_running = False
@@ -193,30 +64,10 @@ class PCNightTimerApp:
 
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        if self._window_position_is_visible(
-            self.saved_window_x,
-            self.saved_window_y,
-            screen_width,
-            screen_height,
-        ):
-            x = self.saved_window_x
-            y = self.saved_window_y
-        else:
-            x = max(0, (screen_width - WINDOW_WIDTH) // 2)
-            y = max(0, (screen_height - WINDOW_HEIGHT) // 2)
+        x = max(0, (screen_width - WINDOW_WIDTH) // 2)
+        y = max(0, (screen_height - WINDOW_HEIGHT) // 2)
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}+{x}+{y}")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
-
-    @staticmethod
-    def _window_position_is_visible(x, y, screen_width, screen_height):
-        if not isinstance(x, int) or not isinstance(y, int):
-            return False
-        return (
-            x < screen_width - MIN_VISIBLE_WINDOW_PIXELS
-            and y < screen_height - MIN_VISIBLE_WINDOW_PIXELS
-            and x + WINDOW_WIDTH > MIN_VISIBLE_WINDOW_PIXELS
-            and y + WINDOW_HEIGHT > MIN_VISIBLE_WINDOW_PIXELS
-        )
 
     def _configure_styles(self):
         style = ttk.Style(self.root)
@@ -401,7 +252,7 @@ class PCNightTimerApp:
             panel,
             text="Modo de prueba",
             variable=self.test_mode,
-            command=self._on_test_mode_changed,
+            command=self._update_test_mode,
             style="Night.TCheckbutton",
             takefocus=True,
         )
@@ -472,10 +323,6 @@ class PCNightTimerApp:
             self.start_button.configure(text="INICIAR TIMER")
             self.test_notice.configure(text="")
 
-    def _on_test_mode_changed(self):
-        self._update_test_mode()
-        self._save_preferences()
-
     @staticmethod
     def format_time(total_seconds):
         total_seconds = max(0, total_seconds)
@@ -513,8 +360,6 @@ class PCNightTimerApp:
             messagebox.showerror("Tiempo no válido", str(error), parent=self.root)
             return
 
-        self._remember_time_selection(selected_seconds)
-        self._save_preferences(remember_time=False)
         self._cancel_scheduled_tick()
         self.remaining_seconds = selected_seconds
         self.timer_running = True
@@ -738,50 +583,8 @@ class PCNightTimerApp:
         except tk.TclError:
             pass
 
-    def _remember_time_selection(self, selected_seconds=None):
-        if selected_seconds is None:
-            try:
-                selected_seconds = self._selected_time_seconds()
-            except ValueError:
-                return False
-
-        selection = self.quick_time.get()
-        self.settings.set(
-            "General", "last_time_minutes", str(selected_seconds // 60)
-        )
-        self.settings.set("General", "last_time_option", selection)
-        if selection == "Personalizado":
-            self.settings.set("General", "custom_hours", self.hours.get().strip())
-            self.settings.set("General", "custom_minutes", self.minutes.get().strip())
-        return True
-
-    def _remember_window_position(self):
-        if self.root.state() != "normal":
-            return
-
-        x = self.root.winfo_x()
-        y = self.root.winfo_y()
-        if self._window_position_is_visible(
-            x,
-            y,
-            self.root.winfo_screenwidth(),
-            self.root.winfo_screenheight(),
-        ):
-            self.settings.set("Window", "x", str(x))
-            self.settings.set("Window", "y", str(y))
-
-    def _save_preferences(self, remember_time=True):
-        if remember_time:
-            self._remember_time_selection()
-        self.settings.set(
-            "Testing", "test_mode", "true" if self.test_mode.get() else "false"
-        )
-        self._remember_window_position()
-        _write_settings(self.settings)
-
     def _on_close_request(self):
         if not self.timer_running:
-            self._save_preferences()
             self.root.destroy()
             return
 
@@ -797,7 +600,6 @@ class PCNightTimerApp:
             self._cancel_scheduled_tick()
             self.timer_running = False
             self.timer_paused = False
-            self._save_preferences()
             self.root.destroy()
 
 
