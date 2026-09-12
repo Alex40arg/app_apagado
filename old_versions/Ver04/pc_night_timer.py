@@ -1,4 +1,4 @@
-# Version: v0.5
+# Version: v0.4
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
@@ -11,15 +11,8 @@ from tkinter import messagebox, ttk
 WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 600
 TIMER_INTERVAL_MS = 1000
-SHUTDOWN_STAGE_DELAY_MS = 1500
 SETTINGS_PATH = Path(__file__).resolve().with_name("settings.ini")
 MIN_VISIBLE_WINDOW_PIXELS = 80
-
-SHUTDOWN_SIMULATION_STAGES = (
-    "Preparando apagado...",
-    "Cerrando aplicaciones...",
-    "Apagando Windows...",
-)
 
 QUICK_TIMES_MINUTES = {
     "15 min": 15,
@@ -187,9 +180,6 @@ class PCNightTimerApp:
         self.timer_paused = False
         self.timer_finished = False
         self.timer_after_id = None
-        self.shutdown_simulation_active = False
-        self.shutdown_stage = 0
-        self.shutdown_after_id = None
 
         self._configure_window()
         self._configure_styles()
@@ -526,7 +516,6 @@ class PCNightTimerApp:
         self._remember_time_selection(selected_seconds)
         self._save_preferences(remember_time=False)
         self._cancel_scheduled_tick()
-        self._cancel_shutdown_simulation()
         self.remaining_seconds = selected_seconds
         self.timer_running = True
         self.timer_paused = False
@@ -553,22 +542,14 @@ class PCNightTimerApp:
         if self.warning_active:
             tk.Label(
                 panel,
-                text=(
-                    "PRUEBA — APAGADO SIMULADO"
-                    if self.test_mode.get()
-                    else "APAGADO INMINENTE"
-                ),
+                text="APAGADO INMINENTE",
                 bg=COLORS["warning_panel"],
                 fg=COLORS["warning"],
                 font=("Segoe UI Semibold", 14),
                 pady=9,
                 takefocus=False,
             ).pack(fill="x")
-            description = (
-                "La simulación comenzará en menos de un minuto"
-                if self.test_mode.get()
-                else "La computadora se apagará en menos de un minuto"
-            )
+            description = "La computadora se apagará en menos de un minuto"
         else:
             description = "La PC se apagará en"
 
@@ -597,14 +578,10 @@ class PCNightTimerApp:
         if self.warning_active:
             tk.Label(
                 panel,
-                text=(
-                    "MODO DE PRUEBA — La PC no se apagará"
-                    if self.test_mode.get()
-                    else "Guardá cualquier trabajo pendiente o cancelá el apagado."
-                ),
+                text="Guardá cualquier trabajo pendiente o cancelá el apagado.",
                 bg=COLORS["panel"],
-                fg=COLORS["warning"] if self.test_mode.get() else COLORS["muted"],
-                font=("Segoe UI Semibold" if self.test_mode.get() else "Segoe UI", 12),
+                fg=COLORS["muted"],
+                font=("Segoe UI", 12),
                 takefocus=False,
             ).pack(pady=(0, 12))
         else:
@@ -702,7 +679,6 @@ class PCNightTimerApp:
 
     def cancel_timer(self):
         self._cancel_scheduled_tick()
-        self._cancel_shutdown_simulation()
         self.timer_running = False
         self.timer_paused = False
         self.timer_finished = False
@@ -726,10 +702,7 @@ class PCNightTimerApp:
         self.timer_paused = False
         self.timer_finished = True
         self.timer_label.configure(text="00:00:00")
-        if self.test_mode.get():
-            self._start_shutdown_simulation()
-        else:
-            self._show_finished_state()
+        self._show_finished_state()
 
     def _show_finished_state(self):
         self.timer_description.configure(text="El timer llegó a cero.")
@@ -738,142 +711,6 @@ class PCNightTimerApp:
         self.pause_button.configure(text="Pausa", state="disabled")
         self.add_15_button.configure(state="disabled")
         self.add_30_button.configure(state="disabled")
-
-    def _start_shutdown_simulation(self):
-        if self.shutdown_simulation_active:
-            return
-        self._cancel_scheduled_tick()
-        self._cancel_shutdown_simulation()
-        self.shutdown_simulation_active = True
-        self.shutdown_stage = 0
-        self._show_shutdown_simulation_stage()
-        self._schedule_shutdown_stage()
-
-    def _show_shutdown_simulation_stage(self):
-        self._clear_content()
-
-        panel = tk.Frame(
-            self.content,
-            bg=COLORS["panel"],
-            highlightthickness=2,
-            highlightbackground=COLORS["warning"],
-        )
-        panel.pack(fill="both", expand=True)
-
-        tk.Label(
-            panel,
-            text="MODO DE PRUEBA — La PC no se apagará",
-            bg=COLORS["warning_panel"],
-            fg=COLORS["warning"],
-            font=("Segoe UI Semibold", 14),
-            pady=9,
-            takefocus=False,
-        ).pack(fill="x")
-        tk.Label(
-            panel,
-            text="00:00:00",
-            bg=COLORS["panel"],
-            fg=COLORS["warning"],
-            font=("Consolas", 68, "bold"),
-            takefocus=False,
-        ).pack(pady=(68, 14))
-        tk.Label(
-            panel,
-            text=SHUTDOWN_SIMULATION_STAGES[self.shutdown_stage],
-            bg=COLORS["panel"],
-            fg=COLORS["text"],
-            font=("Segoe UI Semibold", 22),
-            takefocus=False,
-        ).pack(pady=(0, 16))
-        tk.Label(
-            panel,
-            text="Simulación segura. No se ejecutan acciones del sistema.",
-            bg=COLORS["panel"],
-            fg=COLORS["muted"],
-            font=("Segoe UI", 11),
-            takefocus=False,
-        ).pack()
-
-    def _schedule_shutdown_stage(self):
-        if self.shutdown_simulation_active and self.shutdown_after_id is None:
-            self.shutdown_after_id = self.root.after(
-                SHUTDOWN_STAGE_DELAY_MS, self._advance_shutdown_simulation
-            )
-
-    def _advance_shutdown_simulation(self):
-        self.shutdown_after_id = None
-        if not self.shutdown_simulation_active:
-            return
-
-        self.shutdown_stage += 1
-        if self.shutdown_stage >= len(SHUTDOWN_SIMULATION_STAGES):
-            self._complete_shutdown_simulation()
-            return
-        self._show_shutdown_simulation_stage()
-        self._schedule_shutdown_stage()
-
-    def _complete_shutdown_simulation(self):
-        self._cancel_shutdown_simulation()
-        self.timer_finished = True
-        self._clear_content()
-
-        panel = tk.Frame(
-            self.content,
-            bg=COLORS["panel"],
-            highlightthickness=2,
-            highlightbackground=COLORS["accent"],
-        )
-        panel.pack(fill="both", expand=True)
-
-        tk.Label(
-            panel,
-            text="MODO DE PRUEBA — La PC no se apagó",
-            bg=COLORS["panel_alt"],
-            fg=COLORS["warning"],
-            font=("Segoe UI Semibold", 13),
-            pady=9,
-            takefocus=False,
-        ).pack(fill="x")
-        tk.Label(
-            panel,
-            text="PRUEBA COMPLETADA",
-            bg=COLORS["panel"],
-            fg=COLORS["text"],
-            font=("Segoe UI Semibold", 28),
-            takefocus=False,
-        ).pack(pady=(105, 18))
-        tk.Label(
-            panel,
-            text="El apagado se habría ejecutado correctamente.",
-            bg=COLORS["panel"],
-            fg=COLORS["muted"],
-            font=("Segoe UI", 14),
-            takefocus=False,
-        ).pack(pady=(0, 30))
-        self._button(
-            panel,
-            "NUEVO TIMER",
-            self._return_to_configuration_after_test,
-            kind="primary",
-            width=22,
-        ).pack()
-
-    def _return_to_configuration_after_test(self):
-        self._cancel_shutdown_simulation()
-        self.timer_running = False
-        self.timer_paused = False
-        self.timer_finished = False
-        self.warning_active = False
-        self.show_configuration()
-
-    def _cancel_shutdown_simulation(self):
-        if self.shutdown_after_id is not None:
-            try:
-                self.root.after_cancel(self.shutdown_after_id)
-            except tk.TclError:
-                pass
-            self.shutdown_after_id = None
-        self.shutdown_simulation_active = False
 
     def _enter_final_warning(self):
         if self.warning_active or not self.timer_running:
@@ -943,15 +780,7 @@ class PCNightTimerApp:
         _write_settings(self.settings)
 
     def _on_close_request(self):
-        if self.shutdown_simulation_active:
-            self._cancel_scheduled_tick()
-            self._cancel_shutdown_simulation()
-            self._save_preferences()
-            self.root.destroy()
-            return
-
         if not self.timer_running:
-            self._cancel_shutdown_simulation()
             self._save_preferences()
             self.root.destroy()
             return
@@ -966,7 +795,6 @@ class PCNightTimerApp:
         )
         if should_close:
             self._cancel_scheduled_tick()
-            self._cancel_shutdown_simulation()
             self.timer_running = False
             self.timer_paused = False
             self._save_preferences()

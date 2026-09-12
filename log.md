@@ -105,3 +105,30 @@
 - La ejecución visual no pudo completarse porque el runtime de desarrollo no encuentra un `init.tcl` utilizable. La GUI y la restauración en distintas configuraciones de monitores quedan pendientes de prueba manual con Tkinter operativo.
 - El flujo completo del Modo de prueba queda pendiente para el Paso 5.
 - Todavía no existe apagado real ni acciones sobre el sistema.
+
+## Ver 05 — 2026-09-12
+
+### Cambios
+- Se actualizó el código activo a la versión v0.5.
+- Se completó el Modo de prueba con una secuencia visual segura al llegar a cero: `Preparando apagado...`, `Cerrando aplicaciones...` y `Apagando Windows...`.
+- Se agregó el estado final `PRUEBA COMPLETADA`, el mensaje de resultado simulado y el botón `NUEVO TIMER` para volver a la configuración.
+- El Modo de prueba permanece claramente identificado durante el timer, la advertencia final y toda la simulación.
+- Durante la secuencia simulada no hay controles de pausa, suma de tiempo o cancelación, y se evita la ejecución de callbacks duplicados.
+- El cierre de la aplicación durante la simulación cancela sus callbacks pendientes y finaliza de forma limpia.
+- El modo normal conserva el comportamiento seguro de v0.4 al llegar a cero y no ejecuta acciones reales.
+- Se preservó la versión v0.4 en `old_versions/Ver04/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Implementar exclusivamente el PASO 5 definido en `DEVELOPMENT_SPEC.md`.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver04/pc_night_timer.py`
+
+### Estado
+- La implementación no contiene comandos de apagado, cierre de aplicaciones ni otras acciones reales del sistema.
+- Se mantuvieron la cuenta regresiva, pausa, continuación, cancelación, suma de tiempo, advertencia final y persistencia de preferencias de las versiones anteriores.
+- Pruebas estáticas y de lógica automatizada completadas; la interacción visual real queda pendiente de prueba manual si Tkinter no puede inicializarse en el entorno de desarrollo.
+- El cierre real y ordenado de aplicaciones queda pendiente para el Paso 6.
+- El apagado real de Windows todavía no está implementado.
