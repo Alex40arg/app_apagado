@@ -164,3 +164,32 @@
 - Queda pendiente la prueba manual en Windows con Chrome, ventanas de Explorer, FXSound y reproductores: verificar cierre limpio, posibles diálogos de guardado, comportamiento de aplicaciones elevadas y si algún objetivo requiere fallback.
 - Una aplicación elevada, protegida, perteneciente a Windows o no identificable puede quedar abierta y se informa en la pantalla final en lugar de aplicar fuerza bruta indiscriminada.
 - El apagado real de Windows no está implementado; el PASO 7 queda pendiente.
+
+## Ver 07 — 2026-09-12
+
+### Cambios
+- Se actualizó el código activo a la versión v0.7.
+- Se implementó el apagado real de Windows mediante `shutdown.exe /s /f /t 0`, iniciado con `subprocess.Popen` sin mostrar una consola.
+- Se conservó sin modificaciones innecesarias el cierre previo de aplicaciones de v0.6: solicitud ordenada, timeout de 20 segundos y fallback dirigido.
+- Al terminar el cierre de aplicaciones, incluso si queda algún objetivo no resuelto, el flujo guarda las preferencias, muestra `Apagando Windows...` durante 750 ms y solicita el apagado.
+- PC Night Timer permanece abierto hasta iniciar `shutdown.exe` y comprobar de forma no bloqueante que el comando terminó correctamente; después cierra su propia ventana.
+- Se agregó manejo visible para archivo inexistente, error al crear el proceso y código de salida distinto de cero. En esos casos Windows permanece encendido y se permite volver a configuración o cerrar la aplicación.
+- Se mantuvo una protección adicional que impide ejecutar la orden real si el Modo de prueba estuviera activo.
+- El Modo de prueba conserva exactamente su simulación segura: no enumera ni cierra aplicaciones y no inicia `shutdown.exe`.
+- Se preservó la versión v0.6 exacta en `old_versions/Ver06/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Implementar exclusivamente el PASO 7 definido en `DEVELOPMENT_SPEC.md`, sin avanzar a los ajustes visuales del Paso 8.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver06/pc_night_timer.py`
+
+### Estado
+- Sintaxis Python comprobada correctamente.
+- Harness temporal completado con `subprocess.Popen` simulado para verificar el comando exacto, ausencia de consola, guardado previo de preferencias, delay mediante `after()`, polling no bloqueante, cierre propio después de resultado correcto y manejo de excepciones/códigos de error.
+- Se comprobó que el Modo de prueba no alcanza `shutdown.exe`, que la propia aplicación continúa excluida del cierre previo y que no se usa `os.system()` ni `time.sleep()`.
+- No se ejecutó un apagado real desde el entorno de desarrollo.
+- Queda pendiente la prueba manual controlada en una PC secundaria para confirmar el apagado completo, la persistencia de `settings.ini` y el comportamiento al siguiente inicio de Chrome, Explorer y FXSound.
+- El Paso 8 no fue implementado.

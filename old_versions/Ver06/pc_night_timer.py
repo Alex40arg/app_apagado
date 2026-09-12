@@ -1,4 +1,4 @@
-# Version: v0.7
+# Version: v0.6
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
@@ -7,7 +7,6 @@ import ctypes
 from ctypes import wintypes
 import os
 from pathlib import Path
-import subprocess
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -20,17 +19,8 @@ SHUTDOWN_STAGE_DELAY_MS = 1500
 GRACEFUL_CLOSE_TIMEOUT_SECONDS = 20
 APPLICATION_CLOSE_POLL_MS = 500
 FORCED_CLOSE_SETTLE_MS = 1000
-FINAL_SHUTDOWN_DELAY_MS = 750
-SHUTDOWN_PROCESS_POLL_MS = 100
 SETTINGS_PATH = Path(__file__).resolve().with_name("settings.ini")
 MIN_VISIBLE_WINDOW_PIXELS = 80
-
-SHUTDOWN_EXECUTABLE = (
-    Path(os.environ.get("SystemRoot", r"C:\Windows"))
-    / "System32"
-    / "shutdown.exe"
-)
-SHUTDOWN_COMMAND = (str(SHUTDOWN_EXECUTABLE), "/s", "/f", "/t", "0")
 
 SHUTDOWN_SIMULATION_STAGES = (
     "Preparando apagado...",
@@ -459,9 +449,6 @@ class PCNightTimerApp:
         self.application_closer = None
         self.application_close_targets = []
         self.application_close_unresolved = []
-        self.windows_shutdown_active = False
-        self.windows_shutdown_after_id = None
-        self.windows_shutdown_process = None
 
         self._configure_window()
         self._configure_styles()
@@ -1256,126 +1243,58 @@ class PCNightTimerApp:
         ).pack()
 
     def _complete_application_close(self):
+        unresolved_count = len(self.application_close_unresolved)
         self._cancel_application_close()
         self.timer_finished = True
-        self._save_preferences()
-        self.windows_shutdown_active = True
-        self._show_application_close_stage("Apagando Windows...")
-        self.windows_shutdown_after_id = self.root.after(
-            FINAL_SHUTDOWN_DELAY_MS, self._launch_windows_shutdown
-        )
-
-    def _launch_windows_shutdown(self):
-        self.windows_shutdown_after_id = None
-        if not self.windows_shutdown_active:
-            return
-        if self.test_mode.get():
-            self._show_windows_shutdown_error(
-                "El Modo de prueba impidió ejecutar el apagado real."
-            )
-            return
-
-        try:
-            self.windows_shutdown_process = subprocess.Popen(
-                SHUTDOWN_COMMAND,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        except (OSError, ValueError) as error:
-            self._show_windows_shutdown_error(str(error))
-            return
-
-        self.windows_shutdown_after_id = self.root.after(
-            SHUTDOWN_PROCESS_POLL_MS, self._check_windows_shutdown_process
-        )
-
-    def _check_windows_shutdown_process(self):
-        self.windows_shutdown_after_id = None
-        if not self.windows_shutdown_active or self.windows_shutdown_process is None:
-            return
-
-        return_code = self.windows_shutdown_process.poll()
-        if return_code is None:
-            self.windows_shutdown_after_id = self.root.after(
-                SHUTDOWN_PROCESS_POLL_MS, self._check_windows_shutdown_process
-            )
-            return
-        if return_code != 0:
-            self._show_windows_shutdown_error(
-                f"shutdown.exe terminó con el código de error {return_code}."
-            )
-            return
-
-        self.windows_shutdown_active = False
-        self.windows_shutdown_process = None
-        self.root.destroy()
-
-    def _show_windows_shutdown_error(self, detail):
-        self._cancel_windows_shutdown()
         self._clear_content()
 
         panel = tk.Frame(
             self.content,
             bg=COLORS["panel"],
             highlightthickness=2,
-            highlightbackground=COLORS["danger"],
+            highlightbackground=COLORS["accent"],
         )
         panel.pack(fill="both", expand=True)
         tk.Label(
             panel,
-            text="NO SE PUDO INICIAR EL APAGADO",
+            text="CIERRE DE APLICACIONES COMPLETADO",
             bg=COLORS["panel"],
-            fg=COLORS["warning"],
+            fg=COLORS["text"],
             font=("Segoe UI Semibold", 24),
             takefocus=False,
-        ).pack(pady=(78, 18))
+        ).pack(pady=(105, 20))
+        result_text = (
+            "Aplicaciones cerradas."
+            if unresolved_count == 0
+            else (
+                f"Quedaron {unresolved_count} aplicación(es) sin cerrar porque "
+                "no podían forzarse de forma segura."
+            )
+        )
         tk.Label(
             panel,
             text=(
-                "Windows permanece encendido.\n\n"
-                f"Detalle: {detail}"
+                f"{result_text}\n\n"
+                "El apagado de Windows todavía no está implementado."
             ),
             bg=COLORS["panel"],
             fg=COLORS["muted"],
-            font=("Segoe UI", 13),
+            font=("Segoe UI", 14),
             justify="center",
-            wraplength=690,
             takefocus=False,
-        ).pack(pady=(0, 28))
-
-        controls = tk.Frame(panel, bg=COLORS["panel"])
-        controls.pack()
+        ).pack(pady=(0, 30))
         self._button(
-            controls,
-            "VOLVER A CONFIGURACIÓN",
-            self._return_after_shutdown_error,
+            panel,
+            "NUEVO TIMER",
+            self._return_to_configuration_after_close,
             kind="primary",
-            width=24,
-        ).pack(side="left", padx=7)
-        self._button(
-            controls,
-            "CERRAR",
-            self.root.destroy,
-            kind="secondary",
-            width=14,
-        ).pack(side="left", padx=7)
+            width=22,
+        ).pack()
 
-    def _return_after_shutdown_error(self):
+    def _return_to_configuration_after_close(self):
         self.timer_finished = False
         self.warning_active = False
         self.show_configuration()
-
-    def _cancel_windows_shutdown(self):
-        if self.windows_shutdown_after_id is not None:
-            try:
-                self.root.after_cancel(self.windows_shutdown_after_id)
-            except tk.TclError:
-                pass
-            self.windows_shutdown_after_id = None
-        self.windows_shutdown_active = False
-        self.windows_shutdown_process = None
 
     def _cancel_application_close(self):
         if self.application_close_after_id is not None:
@@ -1459,12 +1378,6 @@ class PCNightTimerApp:
         _write_settings(self.settings)
 
     def _on_close_request(self):
-        if self.windows_shutdown_active:
-            if self.windows_shutdown_process is not None:
-                self._cancel_windows_shutdown()
-                self.root.destroy()
-            return
-
         if self.application_close_active:
             self._cancel_scheduled_tick()
             self._cancel_application_close()
