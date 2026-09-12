@@ -132,3 +132,35 @@
 - Pruebas estáticas y de lógica automatizada completadas; la interacción visual real queda pendiente de prueba manual si Tkinter no puede inicializarse en el entorno de desarrollo.
 - El cierre real y ordenado de aplicaciones queda pendiente para el Paso 6.
 - El apagado real de Windows todavía no está implementado.
+
+## Ver 06 — 2026-09-12
+
+### Cambios
+- Se actualizó el código activo a la versión v0.6.
+- En Modo normal, la llegada a cero inicia un cierre real y ordenado de aplicaciones de usuario mediante mensajes estándar `WM_CLOSE` a ventanas superiores visibles.
+- Se agregó un período de gracia configurable de 20 segundos con polling no bloqueante cada 500 ms mediante `after()`; si todos los objetivos cierran antes, el flujo termina inmediatamente.
+- Después del timeout se aplica un fallback forzado únicamente a los procesos originales todavía pendientes, usando los handles conservados desde la enumeración para evitar actuar sobre procesos ajenos o PIDs reutilizados.
+- Las ventanas se agrupan por proceso, la propia aplicación queda excluida y se omiten ventanas ocultas, internas, sin título, componentes ubicados bajo Windows y nombres asociados a herramientas de seguridad.
+- Chrome y otras aplicaciones normales reciben siempre primero la solicitud de cierre ordenado; no se mata indiscriminadamente por nombre ni se modifican perfiles o sesiones.
+- Explorer sólo se trata mediante sus ventanas de carpeta identificadas y nunca se fuerza ni se termina `explorer.exe`; su cierre se comprueba por las ventanas concretas, no por la vida del shell.
+- El Modo de prueba mantiene intacta su simulación y no crea el componente Win32, no enumera ventanas, no cierra aplicaciones y no ejecuta comandos del sistema.
+- Se agregaron estados visuales localizados para preparación, cierre, espera, fallback y resultado final, indicando expresamente que el apagado de Windows aún no existe.
+- Al cerrar PC Night Timer durante esta fase se cancelan sus callbacks y se liberan los handles abiertos.
+- Se preservó la versión v0.5 exacta en `old_versions/Ver05/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Implementar exclusivamente el PASO 6 definido en `DEVELOPMENT_SPEC.md`, sin avanzar al apagado real del Paso 7.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver05/pc_night_timer.py`
+
+### Estado
+- Sintaxis Python comprobada correctamente.
+- Harness temporal completado para la separación estricta entre Modo de prueba y Modo normal, cierre anticipado sin esperar los 20 segundos, polling no bloqueante, timeout y fallback dirigido.
+- Se comprobó estáticamente la ausencia de `shutdown.exe`, `ExitWindowsEx` y `time.sleep()` en el hilo de interfaz; `settings.ini` no fue modificado.
+- Por seguridad, las pruebas automatizadas no enumeraron, cerraron ni terminaron aplicaciones reales.
+- Queda pendiente la prueba manual en Windows con Chrome, ventanas de Explorer, FXSound y reproductores: verificar cierre limpio, posibles diálogos de guardado, comportamiento de aplicaciones elevadas y si algún objetivo requiere fallback.
+- Una aplicación elevada, protegida, perteneciente a Windows o no identificable puede quedar abierta y se informa en la pantalla final en lugar de aplicar fuerza bruta indiscriminada.
+- El apagado real de Windows no está implementado; el PASO 7 queda pendiente.

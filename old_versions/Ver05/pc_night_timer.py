@@ -1,13 +1,9 @@
-# Version: v0.6
+# Version: v0.5
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
 import configparser
-import ctypes
-from ctypes import wintypes
-import os
 from pathlib import Path
-import time
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -16,9 +12,6 @@ WINDOW_WIDTH = 850
 WINDOW_HEIGHT = 600
 TIMER_INTERVAL_MS = 1000
 SHUTDOWN_STAGE_DELAY_MS = 1500
-GRACEFUL_CLOSE_TIMEOUT_SECONDS = 20
-APPLICATION_CLOSE_POLL_MS = 500
-FORCED_CLOSE_SETTLE_MS = 1000
 SETTINGS_PATH = Path(__file__).resolve().with_name("settings.ini")
 MIN_VISIBLE_WINDOW_PIXELS = 80
 
@@ -26,27 +19,6 @@ SHUTDOWN_SIMULATION_STAGES = (
     "Preparando apagado...",
     "Cerrando aplicaciones...",
     "Apagando Windows...",
-)
-
-WM_CLOSE = 0x0010
-GW_OWNER = 4
-PROCESS_TERMINATE = 0x0001
-SYNCHRONIZE = 0x00100000
-PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-WAIT_TIMEOUT = 0x00000102
-EXPLORER_WINDOW_CLASSES = {"CabinetWClass", "ExploreWClass"}
-PROTECTED_PROCESS_NAME_PARTS = (
-    "antivirus",
-    "avast",
-    "avgui",
-    "defender",
-    "eset",
-    "kaspersky",
-    "malwarebytes",
-    "mcafee",
-    "norton",
-    "securityhealth",
-    "sophos",
 )
 
 QUICK_TIMES_MINUTES = {
@@ -70,231 +42,6 @@ DEFAULT_SETTINGS = {
     "Window": {"x": "", "y": ""},
     "Testing": {"test_mode": "false"},
 }
-
-
-class WindowsApplicationCloser:
-    """Solicita cierre normal y conserva handles para un fallback dirigido."""
-
-    def __init__(self):
-        if os.name != "nt":
-            raise OSError("El cierre de aplicaciones sólo está disponible en Windows.")
-
-        self.user32 = ctypes.WinDLL("user32", use_last_error=True)
-        self.kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        self._window_callback_type = ctypes.WINFUNCTYPE(
-            wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
-        )
-        self._configure_api()
-        self.windows_directory = os.path.normcase(
-            os.path.abspath(os.environ.get("WINDIR", r"C:\Windows"))
-        )
-
-    def _configure_api(self):
-        self.user32.EnumWindows.argtypes = [
-            self._window_callback_type,
-            wintypes.LPARAM,
-        ]
-        self.user32.EnumWindows.restype = wintypes.BOOL
-        self.user32.IsWindowVisible.argtypes = [wintypes.HWND]
-        self.user32.IsWindowVisible.restype = wintypes.BOOL
-        self.user32.IsWindow.argtypes = [wintypes.HWND]
-        self.user32.IsWindow.restype = wintypes.BOOL
-        self.user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
-        self.user32.GetWindow.restype = wintypes.HWND
-        self.user32.GetWindowTextLengthW.argtypes = [wintypes.HWND]
-        self.user32.GetWindowTextLengthW.restype = ctypes.c_int
-        self.user32.GetWindowTextW.argtypes = [
-            wintypes.HWND,
-            wintypes.LPWSTR,
-            ctypes.c_int,
-        ]
-        self.user32.GetWindowTextW.restype = ctypes.c_int
-        self.user32.GetClassNameW.argtypes = [
-            wintypes.HWND,
-            wintypes.LPWSTR,
-            ctypes.c_int,
-        ]
-        self.user32.GetClassNameW.restype = ctypes.c_int
-        self.user32.GetWindowThreadProcessId.argtypes = [
-            wintypes.HWND,
-            ctypes.POINTER(wintypes.DWORD),
-        ]
-        self.user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-        self.user32.PostMessageW.argtypes = [
-            wintypes.HWND,
-            wintypes.UINT,
-            wintypes.WPARAM,
-            wintypes.LPARAM,
-        ]
-        self.user32.PostMessageW.restype = wintypes.BOOL
-
-        self.kernel32.OpenProcess.argtypes = [
-            wintypes.DWORD,
-            wintypes.BOOL,
-            wintypes.DWORD,
-        ]
-        self.kernel32.OpenProcess.restype = wintypes.HANDLE
-        self.kernel32.QueryFullProcessImageNameW.argtypes = [
-            wintypes.HANDLE,
-            wintypes.DWORD,
-            wintypes.LPWSTR,
-            ctypes.POINTER(wintypes.DWORD),
-        ]
-        self.kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
-        self.kernel32.WaitForSingleObject.argtypes = [
-            wintypes.HANDLE,
-            wintypes.DWORD,
-        ]
-        self.kernel32.WaitForSingleObject.restype = wintypes.DWORD
-        self.kernel32.TerminateProcess.argtypes = [wintypes.HANDLE, wintypes.UINT]
-        self.kernel32.TerminateProcess.restype = wintypes.BOOL
-        self.kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
-        self.kernel32.CloseHandle.restype = wintypes.BOOL
-
-    def _window_text(self, window):
-        length = self.user32.GetWindowTextLengthW(window)
-        if length <= 0:
-            return ""
-        buffer = ctypes.create_unicode_buffer(length + 1)
-        self.user32.GetWindowTextW(window, buffer, len(buffer))
-        return buffer.value.strip()
-
-    def _window_class(self, window):
-        buffer = ctypes.create_unicode_buffer(256)
-        self.user32.GetClassNameW(window, buffer, len(buffer))
-        return buffer.value
-
-    def _process_image_path(self, handle):
-        buffer = ctypes.create_unicode_buffer(32768)
-        size = wintypes.DWORD(len(buffer))
-        if not self.kernel32.QueryFullProcessImageNameW(
-            handle, 0, buffer, ctypes.byref(size)
-        ):
-            return ""
-        return buffer.value
-
-    def _is_windows_component(self, image_path):
-        normalized_path = os.path.normcase(os.path.abspath(image_path))
-        try:
-            return os.path.commonpath(
-                (self.windows_directory, normalized_path)
-            ) == self.windows_directory
-        except ValueError:
-            return True
-
-    @staticmethod
-    def _is_protected_name(process_name):
-        return any(part in process_name for part in PROTECTED_PROCESS_NAME_PARTS)
-
-    def discover_targets(self):
-        windows_by_process = {}
-        own_process_id = os.getpid()
-
-        def collect_window(window, _parameter):
-            if not self.user32.IsWindowVisible(window):
-                return True
-            if self.user32.GetWindow(window, GW_OWNER):
-                return True
-            title = self._window_text(window)
-            if not title:
-                return True
-
-            process_id = wintypes.DWORD()
-            self.user32.GetWindowThreadProcessId(window, ctypes.byref(process_id))
-            if not process_id.value or process_id.value == own_process_id:
-                return True
-            windows_by_process.setdefault(process_id.value, []).append(
-                {"window": window, "class_name": self._window_class(window)}
-            )
-            return True
-
-        callback = self._window_callback_type(collect_window)
-        self.user32.EnumWindows(callback, 0)
-
-        targets = []
-        for process_id, windows in windows_by_process.items():
-            access = (
-                SYNCHRONIZE
-                | PROCESS_QUERY_LIMITED_INFORMATION
-                | PROCESS_TERMINATE
-            )
-            handle = self.kernel32.OpenProcess(access, False, process_id)
-            can_force = bool(handle)
-            if not handle:
-                access = SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION
-                handle = self.kernel32.OpenProcess(access, False, process_id)
-            if not handle:
-                continue
-
-            image_path = self._process_image_path(handle)
-            process_name = Path(image_path).name.lower() if image_path else ""
-            is_explorer = process_name == "explorer.exe"
-            if is_explorer:
-                windows = [
-                    item
-                    for item in windows
-                    if item["class_name"] in EXPLORER_WINDOW_CLASSES
-                ]
-
-            should_skip = (
-                not image_path
-                or not windows
-                or self._is_protected_name(process_name)
-                or (self._is_windows_component(image_path) and not is_explorer)
-            )
-            if should_skip:
-                self.kernel32.CloseHandle(handle)
-                continue
-
-            targets.append(
-                {
-                    "pid": process_id,
-                    "handle": handle,
-                    "process_name": process_name,
-                    "windows": [item["window"] for item in windows],
-                    "can_force": can_force and not is_explorer,
-                    "track_windows": is_explorer,
-                }
-            )
-        return targets
-
-    def request_graceful_close(self, targets):
-        for target in targets:
-            for window in target["windows"]:
-                if self.user32.IsWindow(window):
-                    self.user32.PostMessageW(window, WM_CLOSE, 0, 0)
-
-    def pending_targets(self, targets):
-        pending = []
-        for target in targets:
-            if target["track_windows"]:
-                if any(self.user32.IsWindow(window) for window in target["windows"]):
-                    pending.append(target)
-            elif (
-                self.kernel32.WaitForSingleObject(target["handle"], 0)
-                == WAIT_TIMEOUT
-            ):
-                pending.append(target)
-        return pending
-
-    def force_close(self, targets):
-        forced = []
-        not_forced = []
-        for target in targets:
-            if target["can_force"] and self.kernel32.TerminateProcess(
-                target["handle"], 1
-            ):
-                forced.append(target)
-            else:
-                not_forced.append(target)
-        return forced, not_forced
-
-    def release_targets(self, targets):
-        for target in targets:
-            handle = target.get("handle")
-            if handle:
-                self.kernel32.CloseHandle(handle)
-                target["handle"] = None
 
 COLORS = {
     "background": "#0d0f12",
@@ -443,12 +190,6 @@ class PCNightTimerApp:
         self.shutdown_simulation_active = False
         self.shutdown_stage = 0
         self.shutdown_after_id = None
-        self.application_close_active = False
-        self.application_close_after_id = None
-        self.application_close_started_at = None
-        self.application_closer = None
-        self.application_close_targets = []
-        self.application_close_unresolved = []
 
         self._configure_window()
         self._configure_styles()
@@ -988,7 +729,7 @@ class PCNightTimerApp:
         if self.test_mode.get():
             self._start_shutdown_simulation()
         else:
-            self._start_application_close()
+            self._show_finished_state()
 
     def _show_finished_state(self):
         self.timer_description.configure(text="El timer llegó a cero.")
@@ -1134,182 +875,6 @@ class PCNightTimerApp:
             self.shutdown_after_id = None
         self.shutdown_simulation_active = False
 
-    def _start_application_close(self):
-        if self.application_close_active:
-            return
-        self.application_close_active = True
-        self.application_close_unresolved = []
-        self._show_application_close_stage("Preparando apagado...")
-        self.application_close_after_id = self.root.after(
-            0, self._request_application_close
-        )
-
-    def _request_application_close(self):
-        self.application_close_after_id = None
-        if not self.application_close_active:
-            return
-        self._show_application_close_stage("Cerrando aplicaciones...")
-        try:
-            self.application_closer = WindowsApplicationCloser()
-            self.application_close_targets = (
-                self.application_closer.discover_targets()
-            )
-            self.application_closer.request_graceful_close(
-                self.application_close_targets
-            )
-        except OSError:
-            self.application_close_unresolved = ["Plataforma no compatible"]
-            self._complete_application_close()
-            return
-
-        if not self.application_close_targets:
-            self._complete_application_close()
-            return
-
-        self.application_close_started_at = time.monotonic()
-        self._show_application_close_stage("Esperando cierre ordenado...")
-        self._schedule_application_close_poll()
-
-    def _schedule_application_close_poll(self):
-        if self.application_close_active and self.application_close_after_id is None:
-            self.application_close_after_id = self.root.after(
-                APPLICATION_CLOSE_POLL_MS, self._poll_application_close
-            )
-
-    def _poll_application_close(self):
-        self.application_close_after_id = None
-        if not self.application_close_active or self.application_closer is None:
-            return
-
-        pending = self.application_closer.pending_targets(
-            self.application_close_targets
-        )
-        if not pending:
-            self._complete_application_close()
-            return
-
-        elapsed = time.monotonic() - self.application_close_started_at
-        if elapsed < GRACEFUL_CLOSE_TIMEOUT_SECONDS:
-            self._schedule_application_close_poll()
-            return
-
-        self._show_application_close_stage("Forzando aplicaciones pendientes...")
-        _forced, self.application_close_unresolved = (
-            self.application_closer.force_close(pending)
-        )
-        self.application_close_after_id = self.root.after(
-            FORCED_CLOSE_SETTLE_MS, self._finish_forced_application_close
-        )
-
-    def _finish_forced_application_close(self):
-        self.application_close_after_id = None
-        if not self.application_close_active or self.application_closer is None:
-            return
-        still_pending = self.application_closer.pending_targets(
-            self.application_close_targets
-        )
-        unresolved_ids = {target["pid"] for target in self.application_close_unresolved}
-        self.application_close_unresolved = [
-            target
-            for target in still_pending
-            if target["pid"] in unresolved_ids or target["can_force"]
-        ]
-        self._complete_application_close()
-
-    def _show_application_close_stage(self, status_text):
-        self._clear_content()
-        panel = tk.Frame(
-            self.content,
-            bg=COLORS["panel"],
-            highlightthickness=2,
-            highlightbackground=COLORS["warning"],
-        )
-        panel.pack(fill="both", expand=True)
-        tk.Label(
-            panel,
-            text="00:00:00",
-            bg=COLORS["panel"],
-            fg=COLORS["warning"],
-            font=("Consolas", 68, "bold"),
-            takefocus=False,
-        ).pack(pady=(112, 18))
-        tk.Label(
-            panel,
-            text=status_text,
-            bg=COLORS["panel"],
-            fg=COLORS["text"],
-            font=("Segoe UI Semibold", 22),
-            takefocus=False,
-        ).pack()
-
-    def _complete_application_close(self):
-        unresolved_count = len(self.application_close_unresolved)
-        self._cancel_application_close()
-        self.timer_finished = True
-        self._clear_content()
-
-        panel = tk.Frame(
-            self.content,
-            bg=COLORS["panel"],
-            highlightthickness=2,
-            highlightbackground=COLORS["accent"],
-        )
-        panel.pack(fill="both", expand=True)
-        tk.Label(
-            panel,
-            text="CIERRE DE APLICACIONES COMPLETADO",
-            bg=COLORS["panel"],
-            fg=COLORS["text"],
-            font=("Segoe UI Semibold", 24),
-            takefocus=False,
-        ).pack(pady=(105, 20))
-        result_text = (
-            "Aplicaciones cerradas."
-            if unresolved_count == 0
-            else (
-                f"Quedaron {unresolved_count} aplicación(es) sin cerrar porque "
-                "no podían forzarse de forma segura."
-            )
-        )
-        tk.Label(
-            panel,
-            text=(
-                f"{result_text}\n\n"
-                "El apagado de Windows todavía no está implementado."
-            ),
-            bg=COLORS["panel"],
-            fg=COLORS["muted"],
-            font=("Segoe UI", 14),
-            justify="center",
-            takefocus=False,
-        ).pack(pady=(0, 30))
-        self._button(
-            panel,
-            "NUEVO TIMER",
-            self._return_to_configuration_after_close,
-            kind="primary",
-            width=22,
-        ).pack()
-
-    def _return_to_configuration_after_close(self):
-        self.timer_finished = False
-        self.warning_active = False
-        self.show_configuration()
-
-    def _cancel_application_close(self):
-        if self.application_close_after_id is not None:
-            try:
-                self.root.after_cancel(self.application_close_after_id)
-            except tk.TclError:
-                pass
-            self.application_close_after_id = None
-        if self.application_closer is not None:
-            self.application_closer.release_targets(self.application_close_targets)
-        self.application_close_targets = []
-        self.application_closer = None
-        self.application_close_started_at = None
-        self.application_close_active = False
-
     def _enter_final_warning(self):
         if self.warning_active or not self.timer_running:
             return
@@ -1378,13 +943,6 @@ class PCNightTimerApp:
         _write_settings(self.settings)
 
     def _on_close_request(self):
-        if self.application_close_active:
-            self._cancel_scheduled_tick()
-            self._cancel_application_close()
-            self._save_preferences()
-            self.root.destroy()
-            return
-
         if self.shutdown_simulation_active:
             self._cancel_scheduled_tick()
             self._cancel_shutdown_simulation()
