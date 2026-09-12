@@ -193,3 +193,30 @@
 - No se ejecutó un apagado real desde el entorno de desarrollo.
 - Queda pendiente la prueba manual controlada en una PC secundaria para confirmar el apagado completo, la persistencia de `settings.ini` y el comportamiento al siguiente inicio de Chrome, Explorer y FXSound.
 - El Paso 8 no fue implementado.
+
+## Ver 07.1 — 2026-09-12
+
+### Cambios
+- Se actualizó el código activo a la versión v0.7.1.
+- Se agregó detección de privilegios administrativos mediante `IsUserAnAdmin` de la API estándar de Windows.
+- Si el proceso no está elevado, se solicita una nueva instancia mediante UAC con `ShellExecuteW` y el verbo `runas`, conservando el intérprete, la ruta del script y los argumentos de línea de comandos.
+- La instancia original finaliza solamente cuando Windows confirma que inició la nueva instancia. Si el UAC se rechaza o falla, la aplicación continúa abierta sin elevación y no vuelve a solicitar permisos durante esa ejecución.
+- Sin permisos administrativos se bloquea el inicio de timers reales y se muestra un aviso claro; el Modo de prueba permanece disponible y conserva su simulación segura.
+- Se agregó una defensa adicional que impide llegar a `shutdown.exe` sin privilegios, sin modificar el comando ni el flujo estable de cierre de aplicaciones.
+- Se preservó la versión v0.7 exacta en `old_versions/Ver07/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Corregir puntualmente la falta de permisos observada en la prueba manual del apagado real, sin avanzar al Paso 8.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver07/pc_night_timer.py`
+
+### Estado
+- Sintaxis Python comprobada correctamente.
+- Harness temporal completado con APIs y procesos simulados para verificar detección administrativa, relanzamiento `runas` con rutas y argumentos con espacios, cancelación o fallo del UAC, ausencia de un segundo pedido de elevación, bloqueo del timer normal sin permisos, ejecución del Modo de prueba sin permisos y defensa previa a `shutdown.exe`.
+- Se comprobó mediante comparación estructural que las funciones del cierre ordenado permanecen idénticas a la versión preservada v0.7.
+- `settings.ini`, la lógica de cierre ordenado, el timeout de 20 segundos, el fallback y el comando `shutdown.exe /s /f /t 0` no fueron modificados.
+- No se mostró un UAC real ni se ejecutaron cierres de aplicaciones o apagados desde el entorno de desarrollo. Queda pendiente una prueba manual controlada de elevación, cancelación del UAC y apagado real en Windows.
+- El Paso 8 no fue implementado.

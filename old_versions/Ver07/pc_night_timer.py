@@ -1,4 +1,4 @@
-# Version: v0.7.1
+# Version: v0.7
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
@@ -8,7 +8,6 @@ from ctypes import wintypes
 import os
 from pathlib import Path
 import subprocess
-import sys
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -23,7 +22,6 @@ APPLICATION_CLOSE_POLL_MS = 500
 FORCED_CLOSE_SETTLE_MS = 1000
 FINAL_SHUTDOWN_DELAY_MS = 750
 SHUTDOWN_PROCESS_POLL_MS = 100
-SW_SHOWNORMAL = 1
 SETTINGS_PATH = Path(__file__).resolve().with_name("settings.ini")
 MIN_VISIBLE_WINDOW_PIXELS = 80
 
@@ -82,50 +80,6 @@ DEFAULT_SETTINGS = {
     "Window": {"x": "", "y": ""},
     "Testing": {"test_mode": "false"},
 }
-
-
-def is_process_admin():
-    """Indica si el proceso actual tiene privilegios elevados en Windows."""
-    if os.name != "nt":
-        return False
-    try:
-        is_user_an_admin = ctypes.windll.shell32.IsUserAnAdmin
-        is_user_an_admin.restype = wintypes.BOOL
-        return bool(is_user_an_admin())
-    except (AttributeError, OSError):
-        return False
-
-
-def relaunch_as_admin():
-    """Solicita una nueva instancia elevada y confirma si Windows la inició."""
-    if os.name != "nt":
-        return False
-
-    if getattr(sys, "frozen", False):
-        executable = sys.executable
-        arguments = sys.argv[1:]
-    else:
-        executable = sys.executable
-        arguments = [str(Path(__file__).resolve()), *sys.argv[1:]]
-
-    parameters = subprocess.list2cmdline(arguments) if arguments else None
-    try:
-        shell_execute = ctypes.windll.shell32.ShellExecuteW
-        shell_execute.argtypes = [
-            wintypes.HWND,
-            wintypes.LPCWSTR,
-            wintypes.LPCWSTR,
-            wintypes.LPCWSTR,
-            wintypes.LPCWSTR,
-            ctypes.c_int,
-        ]
-        shell_execute.restype = wintypes.HINSTANCE
-        result = shell_execute(
-            None, "runas", executable, parameters, None, SW_SHOWNORMAL
-        )
-        return int(result or 0) > 32
-    except (AttributeError, OSError, ValueError):
-        return False
 
 
 class WindowsApplicationCloser:
@@ -481,9 +435,8 @@ def load_settings(path=SETTINGS_PATH):
 class PCNightTimerApp:
     """Controla las vistas y la cuenta regresiva de PC Night Timer."""
 
-    def __init__(self, root, is_admin=None):
+    def __init__(self, root):
         self.root = root
-        self.is_admin = is_process_admin() if is_admin is None else bool(is_admin)
         self.settings, saved_settings = load_settings()
         self.test_mode = tk.BooleanVar(value=saved_settings["test_mode"])
         self.quick_time = tk.StringVar(value=saved_settings["time_option"])
@@ -836,16 +789,6 @@ class PCNightTimerApp:
         return total_seconds
 
     def start_timer(self):
-        if not self.test_mode.get() and not self.is_admin:
-            messagebox.showwarning(
-                "Permisos de administrador necesarios",
-                "PC Night Timer necesita permisos de administrador\n"
-                "para garantizar el apagado de Windows.\n\n"
-                "Reiniciá la aplicación como administrador.",
-                parent=self.root,
-            )
-            return
-
         try:
             selected_seconds = self._selected_time_seconds()
         except ValueError as error:
@@ -1331,11 +1274,6 @@ class PCNightTimerApp:
                 "El Modo de prueba impidió ejecutar el apagado real."
             )
             return
-        if not self.is_admin:
-            self._show_windows_shutdown_error(
-                "PC Night Timer no tiene permisos de administrador."
-            )
-            return
 
         try:
             self.windows_shutdown_process = subprocess.Popen(
@@ -1565,12 +1503,8 @@ class PCNightTimerApp:
 
 
 def main():
-    is_admin = is_process_admin()
-    if not is_admin and relaunch_as_admin():
-        return
-
     root = tk.Tk()
-    PCNightTimerApp(root, is_admin=is_admin)
+    PCNightTimerApp(root)
     root.mainloop()
 
 
