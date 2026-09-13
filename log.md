@@ -250,14 +250,15 @@
 
 ### Cambios
 - Se actualizó el código activo a la versión v0.8 y se realizó el revamp visual general del PASO 8.
-- Se incorporó un fondo azul-gris con degradado sutil, una tarjeta central oscura, bordes finos y una paleta unificada de texto, acento celeste, advertencia ámbar, peligro bordó y resultado correcto verde apagado.
-- La configuración ahora presenta mejor jerarquía y espaciado: selector de tiempo agrupado, subpanel atenuable para el tiempo personalizado, control de Modo de prueba con apariencia de switch, botón principal reforzado y acción programada más discreta.
+- Se migró la capa de interfaz de Tkinter clásico a CustomTkinter 5.2.2: ventana `CTk`, paneles `CTkFrame`, textos `CTkLabel`, botones `CTkButton`, entradas `CTkEntry`, selector `CTkComboBox` y control `CTkSwitch`.
+- Se incorporó un fondo azul-negro, una tarjeta central oscura con esquinas redondeadas, bordes finos y una paleta unificada de texto, acento celeste, advertencia ámbar, peligro bordó y resultado correcto verde apagado.
+- La configuración ahora presenta mejor jerarquía y espaciado: selector rápido de ancho moderado, subpanel atenuable para el tiempo personalizado, grupo compacto de Modo de prueba, botón principal reforzado y acción programada más discreta.
 - El timer activo usa un contador monoespaciado más grande, estados secundarios más claros y botones principales y secundarios visualmente coherentes, con Cancelar diferenciado como acción crítica.
 - La advertencia final mantiene la identidad general y agrega acento ámbar, encabezado visible, contador destacado, mensaje contextual y cancelación especialmente visible, sin parpadeos ni animaciones agresivas.
 - Se unificó la presentación de las pantallas de simulación, cierre ordenado y apagado real para los estados de preparación, cierre, espera, forzado y solicitud final de apagado.
 - Se rediseñaron la pantalla `PRUEBA COMPLETADA` y el estado de error de apagado para integrarlos con la nueva identidad visual.
-- Se preservó la versión v0.7.2 exacta en `old_versions/Ver08/pc_night_timer.py` antes de modificar el código activo.
-- Antes de esta iteración, el directorio real más reciente era `old_versions/Ver071/` aunque la entrada histórica de v0.7.2 lo denominaba `Ver08`; se continuó con `Ver08` por ser la siguiente carpeta consecutiva realmente disponible, sin sobrescribir `Ver071`.
+- Se usó el mockup como referencia de jerarquía, proporciones, composición centrada, paneles redondeados y protagonismo de la acción principal, sin buscar una copia pixel por pixel.
+- La versión v0.7.2 permanece preservada de forma exacta en `old_versions/Ver07_2/pc_night_timer.py`; no se sobrescribió ni se creó una copia redundante.
 - La lógica funcional no fue modificada de forma sustancial; los cambios se limitaron a recursos, helpers y métodos de presentación.
 
 ### Motivo
@@ -266,13 +267,12 @@
 ### Archivos afectados
 - `pc_night_timer.py`
 - `log.md`
-- `old_versions/Ver08/pc_night_timer.py`
 
 ### Estado
 - Sintaxis Python comprobada correctamente mediante `py_compile`.
-- Harness lógico seguro completado para formato y selección de tiempo, validación personalizada, creación de `settings.ini`, callback único del timer y construcción simulada del apagado con el comando, streams y bandera `CREATE_NO_WINDOW` esperados; no se ejecutó `shutdown.exe` ni se cerraron aplicaciones.
-- Comparación AST contra la copia preservada completada: UAC, persistencia, timer, cierre ordenado y apagado permanecen estructuralmente idénticos; solamente cambiaron métodos visuales y se agregaron helpers de interfaz.
+- Harness lógico seguro completado para formato y selección de tiempo, validación personalizada, persistencia, callback único del timer y construcción simulada del apagado; no se ejecutó `shutdown.exe` ni se cerraron aplicaciones.
+- Comparación AST contra el estado previo completada: UAC, persistencia, timer, cierre ordenado y apagado permanecen estructuralmente idénticos; solamente cambiaron la inicialización y los métodos visuales necesarios para CustomTkinter.
 - Se comprobó la presencia de todos los textos y estados visuales requeridos y `git diff --check` finalizó sin errores.
-- La ejecución visual real no pudo completarse porque el runtime disponible de Codex no encuentra un `init.tcl` utilizable. Queda pendiente una prueba visual manual en Windows, especialmente con escala 125 %, para confirmar respiración, foco, tamaño del contador y ajuste fino de contraste.
+- El runtime Python aislado disponible para Codex no incluye `customtkinter`, por lo que el import real y la apertura visual quedan pendientes en el entorno del usuario que dispone de CustomTkinter 5.2.2. Conviene revisar manualmente la vista completa y la escala Windows 125 % para confirmar respiración, foco, tamaño del contador y contraste.
 - No se ejecutaron cierre real de aplicaciones, elevación UAC ni apagado real durante esta iteración. Sus rutas de código se preservaron y se verificaron estática y estructuralmente.
 - El PASO 9 no fue implementado.
