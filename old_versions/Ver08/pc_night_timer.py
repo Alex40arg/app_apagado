@@ -26,11 +26,7 @@ FORCED_CLOSE_SETTLE_MS = 1000
 FINAL_SHUTDOWN_DELAY_MS = 750
 SHUTDOWN_PROCESS_POLL_MS = 100
 SW_SHOWNORMAL = 1
-SETTINGS_PATH = (
-    Path(sys.executable).resolve().parent
-    if getattr(sys, "frozen", False)
-    else Path(__file__).resolve().parent
-) / "settings.ini"
+SETTINGS_PATH = Path(__file__).resolve().with_name("settings.ini")
 MIN_VISIBLE_WINDOW_PIXELS = 80
 
 SHUTDOWN_EXECUTABLE = (

@@ -276,3 +276,43 @@
 - El runtime Python aislado disponible para Codex no incluye `customtkinter`, por lo que el import real y la apertura visual quedan pendientes en el entorno del usuario que dispone de CustomTkinter 5.2.2. Conviene revisar manualmente la vista completa y la escala Windows 125 % para confirmar respiración, foco, tamaño del contador y contraste.
 - No se ejecutaron cierre real de aplicaciones, elevación UAC ni apagado real durante esta iteración. Sus rutas de código se preservaron y se verificaron estática y estructuralmente.
 - El PASO 9 no fue implementado.
+
+## Ver 08 — Empaquetado EXE — 2026-09-13
+
+### Cambios
+- Se preservó la versión activa v0.8 en `old_versions/Ver08/pc_night_timer.py` antes del empaquetado; la copia se verificó contra el original mediante SHA-256 (`1C40BC3D2BD0F50BC6D97DBBCE1FFB41A18FECD5F9B073A1EEAAF02A1F012F90`).
+- También se preservó el `settings.ini` asociado en `old_versions/Ver08/settings.ini`, con coincidencia SHA-256 exacta.
+- Se mantuvo la versión activa v0.8 y se hizo un único ajuste de compatibilidad con PyInstaller: cuando `sys.frozen` es verdadero, `settings.ini` se resuelve junto a `sys.executable`; al ejecutar el `.py`, conserva su ubicación original junto al script.
+- Se generó `dist/PC_Night_Timer.exe` como ejecutable Windows standalone `onefile`, sin consola y con solicitud de elevación administrativa.
+- Se copió un `settings.ini` inicial externo a `dist/settings.ini`; el EXE puede leerlo, escribirlo y crearlo junto al ejecutable si falta.
+- Se conservó `PC_Night_Timer.spec` para reproducir futuras compilaciones y se mantuvo `build/` como salida diagnóstica regenerable de PyInstaller.
+- Se utilizó Python 3.12.10, PyInstaller 6.22.3 y CustomTkinter 5.2.2. Las dependencias resueltas incluyeron `darkdetect` 0.8.0 y `packaging` 26.3.
+
+### Motivo
+- Implementar exclusivamente el PASO 9 y entregar el ejecutable solicitado sin rediseñar ni modificar la funcionalidad estable de v0.8.
+
+### Configuración de build
+- Comando principal: `python -m PyInstaller --onefile --noconsole --uac-admin --name PC_Night_Timer --collect-all customtkinter --hidden-import darkdetect --hidden-import packaging --distpath dist --workpath build pc_night_timer.py`.
+- El `.spec` resultante registra `console=False`, `uac_admin=True` y `collect_all('customtkinter')`, incluyendo temas, fuentes, iconos y módulos internos de CustomTkinter.
+
+### Archivos afectados o generados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver08/pc_night_timer.py`
+- `old_versions/Ver08/settings.ini`
+- `PC_Night_Timer.spec`
+- `dist/PC_Night_Timer.exe`
+- `dist/settings.ini`
+- `build/PC_Night_Timer/`
+
+### Estado
+- PyInstaller finalizó correctamente y generó `dist/PC_Night_Timer.exe` para Windows x64.
+- El PE usa subsistema Windows GUI (`IMAGE_SUBSYSTEM_WINDOWS_GUI`), por lo que no crea una consola negra.
+- El manifiesto embebido contiene `requestedExecutionLevel level="requireAdministrator"`; esto solicita UAC antes de ejecutar la aplicación. Una vez elevado, la detección interna obtiene permisos y no necesita relanzarse de nuevo.
+- El archivo empaquetado contiene Tcl/Tk, los temas, fuentes e iconos de CustomTkinter, además de `darkdetect` y `packaging`.
+- Sintaxis Python y `git diff --check` comprobados correctamente.
+- Harness gráfico seguro completado: CustomTkinter inicializó la ventana y el Modo de prueba recorrió su flujo hasta `PRUEBA COMPLETADA`, escribiendo únicamente una configuración temporal; no cerró aplicaciones ni invocó `shutdown.exe`.
+- Se ejecutó fuera del proyecto un build temporal equivalente sin manifiesto UAC para validar el payload `onefile`: abrió la GUI `PC Night Timer`, cerró normalmente mediante `WM_CLOSE` y creó/escribió `settings.ini` junto al EXE. No fue necesario forzar el proceso.
+- Comparación AST contra `old_versions/Ver08/pc_night_timer.py` completada: `WindowsApplicationCloser`, `PCNightTimerApp`, timer, Modo de prueba, UAC, cierre ordenado y apagado permanecen estructuralmente idénticos. Sólo cambió la resolución de `SETTINGS_PATH` para el modo empaquetado.
+- No se ejecutaron cierre real de aplicaciones ni apagado real.
+- La aceptación/cancelación visible del UAC, la apertura del EXE final elevado, la ausencia práctica de doble relanzamiento y la ejecución en otra PC con Windows 10/11 quedan pendientes de prueba manual. La prueba real de apagado debe continuar realizándose únicamente en una PC secundaria.
