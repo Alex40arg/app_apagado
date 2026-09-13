@@ -220,3 +220,28 @@
 - `settings.ini`, la lógica de cierre ordenado, el timeout de 20 segundos, el fallback y el comando `shutdown.exe /s /f /t 0` no fueron modificados.
 - No se mostró un UAC real ni se ejecutaron cierres de aplicaciones o apagados desde el entorno de desarrollo. Queda pendiente una prueba manual controlada de elevación, cancelación del UAC y apagado real en Windows.
 - El Paso 8 no fue implementado.
+
+## Ver 07.2 — 2026-09-12
+
+### Cambios
+- Se actualizó el código activo a la versión v0.7.2.
+- El relanzamiento elevado mediante UAC ahora utiliza `pythonw.exe` cuando ese ejecutable existe junto al intérprete Python actual, evitando la consola visible en la nueva instancia.
+- Si `pythonw.exe` no existe, la autoelevación conserva como fallback el intérprete indicado por `sys.executable`.
+- En una futura ejecución empaquetada se conserva directamente el ejecutable de la aplicación, sin intentar convertir su nombre a `pythonw.exe`.
+- Se preservó la versión v0.7.1 exacta en `old_versions/Ver08/pc_night_timer.py` antes de modificar el código activo.
+
+### Motivo
+- Eliminar la ventana negra de consola de la instancia elevada sin modificar el comportamiento funcional de PC Night Timer ni avanzar al Paso 8.
+
+### Archivos afectados
+- `pc_night_timer.py`
+- `log.md`
+- `old_versions/Ver08/pc_night_timer.py`
+
+### Estado
+- Sintaxis Python comprobada correctamente.
+- Harness temporal completado para verificar selección de `pythonw.exe` existente, fallback cuando falta, conservación de un futuro EXE empaquetado y traspaso correcto de rutas y argumentos con espacios a `ShellExecuteW`.
+- Se comprobó mediante comparación estructural que las clases del timer y del cierre/apagado permanecen idénticas a la versión preservada v0.7.1.
+- El timer, la advertencia final, `settings.ini`, el Modo de prueba, el cierre ordenado, el timeout de 20 segundos, el fallback y el apagado real no fueron modificados.
+- No se mostró un UAC real ni se ejecutaron cierres de aplicaciones o apagados desde el entorno de desarrollo. Queda pendiente confirmar manualmente que la instancia elevada abre la GUI sin una consola visible.
+- El Paso 8 no fue implementado.

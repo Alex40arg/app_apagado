@@ -1,4 +1,4 @@
-# Version: v0.7.2
+# Version: v0.7.1
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
@@ -96,18 +96,6 @@ def is_process_admin():
         return False
 
 
-def _elevation_executable():
-    """Prefiere el intérprete GUI sin alterar futuros ejecutables empaquetados."""
-    current_executable = Path(sys.executable)
-    if getattr(sys, "frozen", False):
-        return str(current_executable)
-
-    pythonw_executable = current_executable.with_name("pythonw.exe")
-    if pythonw_executable.is_file():
-        return str(pythonw_executable)
-    return str(current_executable)
-
-
 def relaunch_as_admin():
     """Solicita una nueva instancia elevada y confirma si Windows la inició."""
     if os.name != "nt":
@@ -117,7 +105,7 @@ def relaunch_as_admin():
         executable = sys.executable
         arguments = sys.argv[1:]
     else:
-        executable = _elevation_executable()
+        executable = sys.executable
         arguments = [str(Path(__file__).resolve()), *sys.argv[1:]]
 
     parameters = subprocess.list2cmdline(arguments) if arguments else None
