@@ -1,4 +1,4 @@
-# Version: v0.8
+# Version: v0.7.2
 
 """Interfaz y temporizador funcional de PC Night Timer."""
 
@@ -365,27 +365,17 @@ class WindowsApplicationCloser:
                 target["handle"] = None
 
 COLORS = {
-    "background": "#0b111a",
-    "background_top": "#101b29",
-    "background_bottom": "#080c12",
-    "panel": "#121b27",
-    "panel_alt": "#192534",
-    "panel_soft": "#16212e",
-    "border": "#2a3a4d",
-    "border_soft": "#223143",
-    "text": "#f3f7fb",
-    "muted": "#98a7b8",
-    "muted_dim": "#687789",
-    "accent": "#3f93c8",
-    "accent_active": "#55a9db",
-    "accent_dark": "#173b55",
-    "danger": "#7b3542",
-    "danger_active": "#964553",
-    "danger_soft": "#291820",
-    "warning": "#d3a657",
-    "warning_panel": "#2a2419",
-    "success": "#6eb69a",
-    "success_panel": "#142821",
+    "background": "#0d0f12",
+    "panel": "#171a1f",
+    "panel_alt": "#20242a",
+    "text": "#f0f2f5",
+    "muted": "#b0b6bf",
+    "accent": "#4f6f8f",
+    "accent_active": "#5e82a7",
+    "danger": "#7a3038",
+    "danger_active": "#91404a",
+    "warning": "#c99b4a",
+    "warning_panel": "#2b2418",
 }
 
 
@@ -574,94 +564,64 @@ class PCNightTimerApp:
         style.theme_use("clam")
 
         style.configure(
-            "Night.TCombobox",
+            "TCombobox",
             fieldbackground=COLORS["panel_alt"],
             background=COLORS["panel_alt"],
             foreground=COLORS["text"],
             arrowcolor=COLORS["text"],
-            bordercolor=COLORS["border"],
-            lightcolor=COLORS["border"],
-            darkcolor=COLORS["border"],
-            selectbackground=COLORS["accent_dark"],
-            selectforeground=COLORS["text"],
-            arrowsize=16,
-            padding=(12, 10),
+            bordercolor=COLORS["accent"],
+            lightcolor=COLORS["accent"],
+            darkcolor=COLORS["accent"],
+            padding=8,
         )
         style.map(
-            "Night.TCombobox",
-            fieldbackground=[
-                ("readonly", COLORS["panel_alt"]),
-                ("focus", COLORS["panel_alt"]),
-            ],
+            "TCombobox",
+            fieldbackground=[("readonly", COLORS["panel_alt"])],
             foreground=[("readonly", COLORS["text"])],
-            bordercolor=[
-                ("focus", COLORS["accent"]),
-                ("readonly", COLORS["border"]),
-            ],
-            lightcolor=[("focus", COLORS["accent"])],
-            darkcolor=[("focus", COLORS["accent"])],
-            selectbackground=[("readonly", COLORS["accent_dark"])],
+            selectbackground=[("readonly", COLORS["panel_alt"])],
             selectforeground=[("readonly", COLORS["text"])],
+        )
+        style.configure(
+            "Night.TCheckbutton",
+            background=COLORS["panel"],
+            foreground=COLORS["text"],
+            font=("Segoe UI", 13),
+            padding=6,
+        )
+        style.map(
+            "Night.TCheckbutton",
+            background=[("active", COLORS["panel"])],
+            foreground=[("active", COLORS["text"])],
+            indicatorcolor=[
+                ("selected", COLORS["accent"]),
+                ("!selected", COLORS["panel_alt"]),
+            ],
         )
 
     def _build_shell(self):
-        self.shell = tk.Canvas(
-            self.root,
-            width=WINDOW_WIDTH,
-            height=WINDOW_HEIGHT,
-            bg=COLORS["background"],
-            highlightthickness=0,
-            takefocus=False,
-        )
-        self.shell.pack(fill="both", expand=True)
-        self._draw_gradient(
-            self.shell,
-            COLORS["background_top"],
-            COLORS["background_bottom"],
-            WINDOW_HEIGHT,
-        )
-        self.shell.create_text(
-            WINDOW_WIDTH // 2,
-            30,
+        header = tk.Frame(self.root, bg=COLORS["background"], height=92)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+
+        tk.Label(
+            header,
             text="PC NIGHT TIMER",
-            fill=COLORS["text"],
-            font=("Segoe UI Semibold", 23),
-        )
-        self.shell.create_text(
-            WINDOW_WIDTH // 2,
-            59,
+            bg=COLORS["background"],
+            fg=COLORS["text"],
+            font=("Segoe UI Semibold", 25),
+            takefocus=False,
+        ).pack(pady=(23, 0))
+        tk.Label(
+            header,
             text="Apagado programado simple y visible",
-            fill=COLORS["muted"],
-            font=("Segoe UI", 10),
-        )
+            bg=COLORS["background"],
+            fg=COLORS["muted"],
+            font=("Segoe UI", 11),
+            takefocus=False,
+        ).pack(pady=(2, 0))
 
-        self.content = tk.Frame(self.shell, bg=COLORS["background"])
-        self.shell.create_window(
-            WINDOW_WIDTH // 2,
-            337,
-            window=self.content,
-            width=790,
-            height=492,
-        )
-
-    @staticmethod
-    def _draw_gradient(canvas, start_color, end_color, height):
-        start = tuple(int(start_color[index : index + 2], 16) for index in (1, 3, 5))
-        end = tuple(int(end_color[index : index + 2], 16) for index in (1, 3, 5))
-        for y in range(height):
-            ratio = y / max(1, height - 1)
-            color = "#{:02x}{:02x}{:02x}".format(
-                *(round(a + (b - a) * ratio) for a, b in zip(start, end))
-            )
-            canvas.create_line(0, y, WINDOW_WIDTH, y, fill=color)
-
-    def _card(self, *, accent=None):
-        border_color = COLORS[accent] if accent else COLORS["border"]
-        border = tk.Frame(self.content, bg=border_color)
-        border.pack(fill="both", expand=True)
-        panel = tk.Frame(border, bg=COLORS["panel"])
-        panel.pack(fill="both", expand=True, padx=1, pady=1)
-        return panel
+        self.content = tk.Frame(self.root, bg=COLORS["background"])
+        self.content.pack(fill="both", expand=True, padx=32, pady=(2, 25))
 
     def _clear_content(self):
         for child in self.content.winfo_children():
@@ -670,11 +630,11 @@ class PCNightTimerApp:
     def _button(self, parent, text, command, *, kind="secondary", width=16):
         palettes = {
             "primary": (COLORS["accent"], COLORS["accent_active"], COLORS["text"]),
-            "secondary": (COLORS["panel_alt"], "#233247", COLORS["text"]),
+            "secondary": (COLORS["panel_alt"], "#2b3038", COLORS["text"]),
             "danger": (COLORS["danger"], COLORS["danger_active"], COLORS["text"]),
         }
         background, active_background, foreground = palettes[kind]
-        button = tk.Button(
+        return tk.Button(
             parent,
             text=text,
             command=command,
@@ -686,131 +646,47 @@ class PCNightTimerApp:
             disabledforeground=COLORS["muted"],
             relief="flat",
             bd=0,
-            font=("Segoe UI Semibold", 11),
+            font=("Segoe UI Semibold", 12),
             cursor="hand2",
-            padx=12,
-            pady=11,
+            padx=10,
+            pady=10,
             takefocus=True,
-            highlightthickness=2,
-            highlightbackground=background,
-            highlightcolor=COLORS["text"],
-        )
-        button.bind(
-            "<Enter>",
-            lambda _event: button.configure(bg=active_background),
-        )
-        button.bind(
-            "<Leave>",
-            lambda _event: button.configure(bg=background),
-        )
-        return button
-
-    @staticmethod
-    def _rounded_rectangle(canvas, x1, y1, x2, y2, radius, **kwargs):
-        points = (
-            x1 + radius,
-            y1,
-            x2 - radius,
-            y1,
-            x2,
-            y1,
-            x2,
-            y1 + radius,
-            x2,
-            y2 - radius,
-            x2,
-            y2,
-            x2 - radius,
-            y2,
-            x1 + radius,
-            y2,
-            x1,
-            y2,
-            x1,
-            y2 - radius,
-            x1,
-            y1 + radius,
-            x1,
-            y1,
-        )
-        return canvas.create_polygon(points, smooth=True, **kwargs)
-
-    def _switch(self, parent):
-        switch = tk.Canvas(
-            parent,
-            width=54,
-            height=30,
-            bg=COLORS["panel_soft"],
-            highlightthickness=2,
-            highlightbackground=COLORS["panel_soft"],
-            highlightcolor=COLORS["accent"],
-            cursor="hand2",
-            takefocus=True,
-        )
-        switch.bind("<Button-1>", self._toggle_test_mode)
-        switch.bind("<space>", self._toggle_test_mode)
-        switch.bind("<Return>", self._toggle_test_mode)
-        return switch
-
-    def _toggle_test_mode(self, _event=None):
-        self.test_mode.set(not self.test_mode.get())
-        self._on_test_mode_changed()
-
-    def _render_test_switch(self):
-        if not hasattr(self, "test_switch") or not self.test_switch.winfo_exists():
-            return
-        self.test_switch.delete("all")
-        enabled = self.test_mode.get()
-        track_color = COLORS["accent"] if enabled else COLORS["border"]
-        knob_x = 39 if enabled else 15
-        self._rounded_rectangle(
-            self.test_switch,
-            3,
-            4,
-            51,
-            27,
-            12,
-            fill=track_color,
-            outline=track_color,
-        )
-        self.test_switch.create_oval(
-            knob_x - 9,
-            6,
-            knob_x + 9,
-            24,
-            fill=COLORS["text"],
-            outline=COLORS["text"],
         )
 
     def show_configuration(self):
         self.warning_active = False
         self._clear_content()
 
-        panel = self._card()
+        panel = tk.Frame(
+            self.content,
+            bg=COLORS["panel"],
+            highlightthickness=1,
+            highlightbackground="#292e35",
+        )
+        panel.pack(fill="both", expand=True)
 
         tk.Label(
             panel,
             text="¿Dentro de cuánto tiempo querés apagar la PC?",
             bg=COLORS["panel"],
             fg=COLORS["text"],
-            font=("Segoe UI Semibold", 18),
+            font=("Segoe UI Semibold", 17),
             takefocus=False,
-        ).pack(pady=(20, 14))
+        ).pack(pady=(24, 18))
 
-        selector_block = tk.Frame(panel, bg=COLORS["panel"])
-        selector_block.pack(fill="x", padx=78)
+        selector_row = tk.Frame(panel, bg=COLORS["panel"])
+        selector_row.pack()
         tk.Label(
-            selector_block,
+            selector_row,
             text="Tiempo rápido",
             bg=COLORS["panel"],
             fg=COLORS["muted"],
-            font=("Segoe UI Semibold", 10),
-            anchor="w",
+            font=("Segoe UI", 12),
             takefocus=False,
-        ).pack(fill="x", pady=(0, 5))
+        ).pack(side="left", padx=(0, 14))
 
         quick_selector = ttk.Combobox(
-            selector_block,
+            selector_row,
             textvariable=self.quick_time,
             values=(
                 "15 min",
@@ -824,103 +700,79 @@ class PCNightTimerApp:
                 "Personalizado",
             ),
             state="readonly",
-            style="Night.TCombobox",
-            font=("Segoe UI Semibold", 12),
+            width=20,
+            font=("Segoe UI", 13),
         )
-        quick_selector.pack(fill="x")
+        quick_selector.pack(side="left")
         quick_selector.bind("<<ComboboxSelected>>", self._update_custom_state)
 
-        custom_border = tk.Frame(panel, bg=COLORS["border_soft"])
-        custom_border.pack(fill="x", padx=78, pady=(12, 10))
-        self.custom_panel = tk.Frame(
-            custom_border, bg=COLORS["panel_soft"], padx=18, pady=10
-        )
-        self.custom_panel.pack(fill="both", padx=1, pady=1)
-        self.custom_title = tk.Label(
-            self.custom_panel,
+        custom_panel = tk.Frame(panel, bg=COLORS["panel_alt"], padx=22, pady=13)
+        custom_panel.pack(pady=(18, 15))
+        tk.Label(
+            custom_panel,
             text="Tiempo personalizado",
-            bg=COLORS["panel_soft"],
+            bg=COLORS["panel_alt"],
             fg=COLORS["muted"],
-            font=("Segoe UI Semibold", 10),
-            anchor="w",
-            takefocus=False,
-        )
-        self.custom_title.grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
-
-        self.hours_entry = self._time_entry(self.custom_panel, self.hours)
-        self.hours_entry.grid(row=1, column=0, padx=(0, 7))
-        hours_label = tk.Label(
-            self.custom_panel,
-            text="horas",
-            bg=COLORS["panel_soft"],
-            fg=COLORS["text"],
-            font=("Segoe UI", 11),
-            takefocus=False,
-        )
-        hours_label.grid(row=1, column=1, padx=(0, 24))
-        self.minutes_entry = self._time_entry(self.custom_panel, self.minutes)
-        self.minutes_entry.grid(row=1, column=2, padx=(0, 7))
-        minutes_label = tk.Label(
-            self.custom_panel,
-            text="minutos",
-            bg=COLORS["panel_soft"],
-            fg=COLORS["text"],
-            font=("Segoe UI", 11),
-            takefocus=False,
-        )
-        minutes_label.grid(row=1, column=3)
-        self.custom_labels = (self.custom_title, hours_label, minutes_label)
-
-        test_row = tk.Frame(panel, bg=COLORS["panel_soft"], padx=15, pady=7)
-        test_row.pack(fill="x", padx=78)
-        test_text = tk.Frame(test_row, bg=COLORS["panel_soft"])
-        test_text.pack(side="left", fill="x", expand=True)
-        tk.Label(
-            test_text,
-            text="Modo de prueba",
-            bg=COLORS["panel_soft"],
-            fg=COLORS["text"],
             font=("Segoe UI Semibold", 11),
-            anchor="w",
             takefocus=False,
-        ).pack(fill="x")
+        ).grid(row=0, column=0, columnspan=4, pady=(0, 9))
+
+        self.hours_entry = self._time_entry(custom_panel, self.hours)
+        self.hours_entry.grid(row=1, column=0, padx=(0, 7))
         tk.Label(
-            test_text,
-            text="Simula el flujo completo sin apagar la PC",
-            bg=COLORS["panel_soft"],
-            fg=COLORS["muted_dim"],
-            font=("Segoe UI", 9),
-            anchor="w",
+            custom_panel,
+            text="horas",
+            bg=COLORS["panel_alt"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 12),
             takefocus=False,
-        ).pack(fill="x")
-        self.test_switch = self._switch(test_row)
-        self.test_switch.pack(side="right", padx=(14, 0))
+        ).grid(row=1, column=1, padx=(0, 24))
+        self.minutes_entry = self._time_entry(custom_panel, self.minutes)
+        self.minutes_entry.grid(row=1, column=2, padx=(0, 7))
+        tk.Label(
+            custom_panel,
+            text="minutos",
+            bg=COLORS["panel_alt"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 12),
+            takefocus=False,
+        ).grid(row=1, column=3)
+
+        test_check = ttk.Checkbutton(
+            panel,
+            text="Modo de prueba",
+            variable=self.test_mode,
+            command=self._on_test_mode_changed,
+            style="Night.TCheckbutton",
+            takefocus=True,
+        )
+        test_check.pack()
 
         self.test_notice = tk.Label(
             panel,
             text="",
             bg=COLORS["panel"],
             fg=COLORS["warning"],
-            font=("Segoe UI Semibold", 9),
+            font=("Segoe UI Semibold", 10),
             takefocus=False,
         )
-        self.test_notice.pack(pady=(5, 4))
+        self.test_notice.pack(pady=(0, 9))
 
         self.start_button = self._button(
             panel,
             "INICIAR TIMER",
             self.start_timer,
             kind="primary",
-            width=29,
+            width=25,
         )
-        self.start_button.pack(pady=(0, 7))
+        self.start_button.pack(pady=(1, 10))
 
         tk.Label(
             panel,
             text="Acción programada: Apagar PC",
             bg=COLORS["panel"],
-            fg=COLORS["muted_dim"],
-            font=("Segoe UI", 9),
+            fg=COLORS["muted"],
+            font=("Segoe UI", 10),
             takefocus=False,
         ).pack()
 
@@ -936,13 +788,13 @@ class PCNightTimerApp:
             bg="#101318",
             fg=COLORS["text"],
             insertbackground=COLORS["text"],
-            disabledbackground=COLORS["panel"],
-            disabledforeground=COLORS["muted_dim"],
+            disabledbackground="#181b20",
+            disabledforeground="#727984",
             relief="flat",
-            highlightthickness=2,
-            highlightbackground=COLORS["border"],
+            highlightthickness=1,
+            highlightbackground="#3a414b",
             highlightcolor=COLORS["accent"],
-            font=("Segoe UI Semibold", 13),
+            font=("Segoe UI Semibold", 14),
             takefocus=True,
         )
 
@@ -950,9 +802,6 @@ class PCNightTimerApp:
         state = "normal" if self.quick_time.get() == "Personalizado" else "disabled"
         self.hours_entry.configure(state=state)
         self.minutes_entry.configure(state=state)
-        label_color = COLORS["text"] if state == "normal" else COLORS["muted_dim"]
-        for label in self.custom_labels:
-            label.configure(fg=label_color)
 
     def _update_test_mode(self):
         if not hasattr(self, "start_button"):
@@ -963,7 +812,6 @@ class PCNightTimerApp:
         else:
             self.start_button.configure(text="INICIAR TIMER")
             self.test_notice.configure(text="")
-        self._render_test_switch()
 
     def _on_test_mode_changed(self):
         self._update_test_mode()
@@ -1033,7 +881,15 @@ class PCNightTimerApp:
     def show_active_timer(self):
         self._clear_content()
 
-        panel = self._card(accent="warning" if self.warning_active else None)
+        panel = tk.Frame(
+            self.content,
+            bg=COLORS["panel"],
+            highlightthickness=2,
+            highlightbackground=(
+                COLORS["warning"] if self.warning_active else "#292e35"
+            ),
+        )
+        panel.pack(fill="both", expand=True)
 
         if self.warning_active:
             tk.Label(
@@ -1045,8 +901,8 @@ class PCNightTimerApp:
                 ),
                 bg=COLORS["warning_panel"],
                 fg=COLORS["warning"],
-                font=("Segoe UI Semibold", 13),
-                pady=10,
+                font=("Segoe UI Semibold", 14),
+                pady=9,
                 takefocus=False,
             ).pack(fill="x")
             description = (
@@ -1061,12 +917,12 @@ class PCNightTimerApp:
             panel,
             text=description,
             bg=COLORS["panel"],
-            fg=COLORS["muted"] if not self.warning_active else COLORS["text"],
-            font=("Segoe UI Semibold", 17),
+            fg=COLORS["text"],
+            font=("Segoe UI Semibold", 18),
             takefocus=False,
         )
         self.timer_description.pack(
-            pady=((21 if self.warning_active else 37), 2)
+            pady=((22 if self.warning_active else 35), 4)
         )
 
         self.timer_label = tk.Label(
@@ -1074,10 +930,10 @@ class PCNightTimerApp:
             text=self.format_time(self.remaining_seconds),
             bg=COLORS["panel"],
             fg=COLORS["warning"] if self.warning_active else COLORS["text"],
-            font=("Consolas", 72, "bold"),
+            font=("Consolas", 68, "bold"),
             takefocus=False,
         )
-        self.timer_label.pack(pady=(0, 3))
+        self.timer_label.pack(pady=(0, 5))
 
         if self.warning_active:
             tk.Label(
@@ -1089,9 +945,9 @@ class PCNightTimerApp:
                 ),
                 bg=COLORS["panel"],
                 fg=COLORS["warning"] if self.test_mode.get() else COLORS["muted"],
-                font=("Segoe UI Semibold" if self.test_mode.get() else "Segoe UI", 11),
+                font=("Segoe UI Semibold" if self.test_mode.get() else "Segoe UI", 12),
                 takefocus=False,
-            ).pack(pady=(0, 15))
+            ).pack(pady=(0, 12))
         else:
             mode_text = self._active_status_text()
             self.timer_status = tk.Label(
@@ -1099,39 +955,38 @@ class PCNightTimerApp:
                 text=mode_text,
                 bg=COLORS["panel"],
                 fg=COLORS["warning"] if self.test_mode.get() else COLORS["muted"],
-                font=("Segoe UI Semibold", 10),
+                font=("Segoe UI Semibold", 11),
                 takefocus=False,
             )
-            self.timer_status.pack(pady=(0, 21))
+            self.timer_status.pack(pady=(0, 16))
 
         if self.warning_active:
             self.timer_status = None
 
         primary_controls = tk.Frame(panel, bg=COLORS["panel"])
-        primary_controls.pack(pady=(0, 15))
+        primary_controls.pack(pady=(0, 13))
         pause_text = "Continuar" if self.timer_paused else "Pausa"
         self.pause_button = self._button(
-            primary_controls, pause_text, self.toggle_pause, width=17
+            primary_controls, pause_text, self.toggle_pause
         )
-        self.pause_button.pack(side="left", padx=8)
+        self.pause_button.pack(side="left", padx=7)
         self._button(
             primary_controls,
             "CANCELAR" if self.warning_active else "Cancelar",
             self.cancel_timer,
             kind="danger",
-            width=17,
-        ).pack(side="left", padx=8)
+        ).pack(side="left", padx=7)
 
         add_controls = tk.Frame(panel, bg=COLORS["panel"])
         add_controls.pack(pady=(0, 12))
         self.add_15_button = self._button(
             add_controls, "+15 min", lambda: self.add_minutes(15), width=12
         )
-        self.add_15_button.pack(side="left", padx=8)
+        self.add_15_button.pack(side="left", padx=7)
         self.add_30_button = self._button(
             add_controls, "+30 min", lambda: self.add_minutes(30), width=12
         )
-        self.add_30_button.pack(side="left", padx=8)
+        self.add_30_button.pack(side="left", padx=7)
 
         if self.timer_finished:
             self._show_finished_state()
@@ -1236,49 +1091,47 @@ class PCNightTimerApp:
         self._schedule_shutdown_stage()
 
     def _show_shutdown_simulation_stage(self):
-        self._show_process_screen(
-            SHUTDOWN_SIMULATION_STAGES[self.shutdown_stage],
-            banner="MODO DE PRUEBA — La PC no se apagará",
-            supporting_text="Simulación segura. No se ejecutan acciones del sistema.",
-        )
-
-    def _show_process_screen(self, status_text, *, banner=None, supporting_text=None):
         self._clear_content()
-        panel = self._card(accent="warning")
 
-        if banner:
-            tk.Label(
-                panel,
-                text=banner,
-                bg=COLORS["warning_panel"],
-                fg=COLORS["warning"],
-                font=("Segoe UI Semibold", 12),
-                pady=10,
-                takefocus=False,
-            ).pack(fill="x")
+        panel = tk.Frame(
+            self.content,
+            bg=COLORS["panel"],
+            highlightthickness=2,
+            highlightbackground=COLORS["warning"],
+        )
+        panel.pack(fill="both", expand=True)
 
+        tk.Label(
+            panel,
+            text="MODO DE PRUEBA — La PC no se apagará",
+            bg=COLORS["warning_panel"],
+            fg=COLORS["warning"],
+            font=("Segoe UI Semibold", 14),
+            pady=9,
+            takefocus=False,
+        ).pack(fill="x")
         tk.Label(
             panel,
             text="00:00:00",
             bg=COLORS["panel"],
             fg=COLORS["warning"],
-            font=("Consolas", 72, "bold"),
+            font=("Consolas", 68, "bold"),
             takefocus=False,
-        ).pack(pady=((67 if banner else 91), 11))
+        ).pack(pady=(68, 14))
         tk.Label(
             panel,
-            text=status_text,
+            text=SHUTDOWN_SIMULATION_STAGES[self.shutdown_stage],
             bg=COLORS["panel"],
             fg=COLORS["text"],
             font=("Segoe UI Semibold", 22),
             takefocus=False,
-        ).pack(pady=(0, 13))
+        ).pack(pady=(0, 16))
         tk.Label(
             panel,
-            text=supporting_text or "Cierre seguro en curso. No apagues el equipo manualmente.",
+            text="Simulación segura. No se ejecutan acciones del sistema.",
             bg=COLORS["panel"],
             fg=COLORS["muted"],
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 11),
             takefocus=False,
         ).pack()
 
@@ -1305,41 +1158,39 @@ class PCNightTimerApp:
         self.timer_finished = True
         self._clear_content()
 
-        panel = self._card(accent="success")
+        panel = tk.Frame(
+            self.content,
+            bg=COLORS["panel"],
+            highlightthickness=2,
+            highlightbackground=COLORS["accent"],
+        )
+        panel.pack(fill="both", expand=True)
 
         tk.Label(
             panel,
             text="MODO DE PRUEBA — La PC no se apagó",
-            bg=COLORS["success_panel"],
-            fg=COLORS["success"],
-            font=("Segoe UI Semibold", 12),
-            pady=10,
+            bg=COLORS["panel_alt"],
+            fg=COLORS["warning"],
+            font=("Segoe UI Semibold", 13),
+            pady=9,
             takefocus=False,
         ).pack(fill="x")
-        tk.Label(
-            panel,
-            text="✓",
-            bg=COLORS["panel"],
-            fg=COLORS["success"],
-            font=("Segoe UI", 34),
-            takefocus=False,
-        ).pack(pady=(50, 4))
         tk.Label(
             panel,
             text="PRUEBA COMPLETADA",
             bg=COLORS["panel"],
             fg=COLORS["text"],
-            font=("Segoe UI Semibold", 27),
+            font=("Segoe UI Semibold", 28),
             takefocus=False,
-        ).pack(pady=(0, 12))
+        ).pack(pady=(105, 18))
         tk.Label(
             panel,
             text="El apagado se habría ejecutado correctamente.",
             bg=COLORS["panel"],
             fg=COLORS["muted"],
-            font=("Segoe UI", 13),
+            font=("Segoe UI", 14),
             takefocus=False,
-        ).pack(pady=(0, 27))
+        ).pack(pady=(0, 30))
         self._button(
             panel,
             "NUEVO TIMER",
@@ -1448,7 +1299,30 @@ class PCNightTimerApp:
         self._complete_application_close()
 
     def _show_application_close_stage(self, status_text):
-        self._show_process_screen(status_text)
+        self._clear_content()
+        panel = tk.Frame(
+            self.content,
+            bg=COLORS["panel"],
+            highlightthickness=2,
+            highlightbackground=COLORS["warning"],
+        )
+        panel.pack(fill="both", expand=True)
+        tk.Label(
+            panel,
+            text="00:00:00",
+            bg=COLORS["panel"],
+            fg=COLORS["warning"],
+            font=("Consolas", 68, "bold"),
+            takefocus=False,
+        ).pack(pady=(112, 18))
+        tk.Label(
+            panel,
+            text=status_text,
+            bg=COLORS["panel"],
+            fg=COLORS["text"],
+            font=("Segoe UI Semibold", 22),
+            takefocus=False,
+        ).pack()
 
     def _complete_application_close(self):
         self._cancel_application_close()
@@ -1516,24 +1390,21 @@ class PCNightTimerApp:
         self._cancel_windows_shutdown()
         self._clear_content()
 
-        panel = self._card(accent="danger")
-        tk.Label(
-            panel,
-            text="ERROR DE APAGADO",
-            bg=COLORS["danger_soft"],
-            fg="#d88895",
-            font=("Segoe UI Semibold", 12),
-            pady=10,
-            takefocus=False,
-        ).pack(fill="x")
+        panel = tk.Frame(
+            self.content,
+            bg=COLORS["panel"],
+            highlightthickness=2,
+            highlightbackground=COLORS["danger"],
+        )
+        panel.pack(fill="both", expand=True)
         tk.Label(
             panel,
             text="NO SE PUDO INICIAR EL APAGADO",
             bg=COLORS["panel"],
-            fg=COLORS["text"],
-            font=("Segoe UI Semibold", 23),
+            fg=COLORS["warning"],
+            font=("Segoe UI Semibold", 24),
             takefocus=False,
-        ).pack(pady=(61, 15))
+        ).pack(pady=(78, 18))
         tk.Label(
             panel,
             text=(
@@ -1542,11 +1413,11 @@ class PCNightTimerApp:
             ),
             bg=COLORS["panel"],
             fg=COLORS["muted"],
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 13),
             justify="center",
-            wraplength=650,
+            wraplength=690,
             takefocus=False,
-        ).pack(pady=(0, 30))
+        ).pack(pady=(0, 28))
 
         controls = tk.Frame(panel, bg=COLORS["panel"])
         controls.pack()
